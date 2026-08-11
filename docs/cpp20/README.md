@@ -2,6 +2,16 @@
 
 C++20 是一次大型升级，引入 Concepts、Ranges、Coroutines、Modules，并显著扩充编译期与并发能力。
 
+## 推荐学习顺序
+
+1. 高频语言能力：三路比较、指定初始化、编译期增强、Lambda 模板。
+2. 泛型编程：Concepts、Ranges 与 `span`。
+3. 标准库：`format`、位工具、日期和常用容器/字符串增强。
+4. 并发：`jthread`、停止令牌、同步原语和原子等待。
+5. 架构级特性：Coroutines 与 Modules。
+
+Coroutines 和 Modules 不是孤立语法；分别依赖异步生命周期设计和构建系统支持，建议最后学习并结合实际工程验证。
+
 - [Concepts 与约束](concepts.md)
 - [Ranges 与 Views](ranges.md)
 - [Coroutines](coroutines.md)
@@ -21,4 +31,3 @@ C++20 是一次大型升级，引入 Concepts、Ranges、Coroutines、Modules，
 - [字符串和容器常用增强](library-conveniences.md)
 
 [返回总览](../../README.md)
-
