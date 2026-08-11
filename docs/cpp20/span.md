@@ -34,6 +34,10 @@ extent 是 `span` 类型的第二模板参数。缺省值 `dynamic_extent` 表�
 
 固定 span 并不是内建数组所有者。复制 `span<int, 4>` 仍只复制视图，底层四个整数没有复制。静态长度带来的主要变化是类型契约和可能更小的表示，而不是所有权。
 
+`extent` 是元素数量而非字节数量，`size_bytes()` 才返回 `size() * sizeof(element_type)`。固定 extent 为零的 span 是合法类型，它仍不允许解引用；实现可能无需保存有效数据指针。不要用对象尺寸反推 span 内部表示。
+
+`span<T, N>::extent` 是编译期常量，可用于静态断言和选择固定块算法。动态 span 的 `extent` 等于 `dynamic_extent`，运行期 `size()` 才给出实际长度。把动态长度转换为固定长度需要满足构造前置条件，不能因目标类型写了 N 就自动截断。
+
 <!-- example id="cpp20-span-static-subview" std="c++20" file="main.cpp" kind="single" compilers="all" output="middle=2,3 bytes=8" -->
 ```cpp
 #include <array>
@@ -61,6 +65,12 @@ int main() {
 从范围构造时要求连续且有大小，并受 borrowed/viewable 等生命周期条件约束。显式的指针加长度构造完全信任调用方：指针必须指向至少给定数量的连续元素，二者不匹配会使后续访问失去保证。
 
 `data()` 对空 span 可返回空或某个不可解引用位置，不能因为 `size()==0` 仍访问 `data()[0]`。`empty()`、`size()` 和 `size_bytes()` 是观察接口，不验证底层所有者仍存在。
+
+从 C 数组和 `std::array<T, N>` 构造时，N 可通过类模板实参推导进入静态 extent；从 `vector` 等运行期容器通常得到动态 extent。局部 `std::span view(array)` 可以保留长度，公共函数形参仍应显式写 `span<const T, N>` 或 `span<const T>` 表达契约。
+
+元素类型转换要求数组元素指针具有相应安全转换，主要用于增加 const。`span<Derived>` 不能转成 `span<Base>`，因为相邻 Derived 对象中的 Base 子对象步长仍是 `sizeof(Derived)`；若允许转换，按 Base 步长迭代会走入错误地址。
+
+来自迭代器与数量/哨兵的构造依赖连续迭代器协议。仅仅一个类型支持 `operator+` 和解引用，不代表底层元素连续；自定义迭代器必须诚实满足 `contiguous_iterator` 及 `to_address` 关系。
 
 ## 子视图与边界
 
@@ -99,6 +109,14 @@ int main() {
 `span` 不携带容量，只携带可访问大小，不能作为 `vector` 追加接口。需要输出到调用方缓冲区时，可以接收可写 span 并返回实际写入子 span/长度，让容量检查集中在函数内。
 
 与 `string_view` 相比，span 可表示任意对象元素且可写；与迭代器对相比，它要求连续并提供 O(1) 大小；与 vector 相比，它没有分配器、容量或所有权。根据契约选择最窄抽象。
+
+### 别名与原地算法
+
+两个 span 可以部分或完全重叠。接收输入 span 与输出 span 的算法若不支持重叠，必须把这一点写成前置条件并在可行时检查地址区间；仅类型不同不能证明无别名。复制重叠字节还要选择具有相应语义的算法，不能盲用按不重叠优化的路径。
+
+按值传 span 只复制窗口元数据，适合函数参数。传 `const span<T>&` 只会让窗口对象不能改起点/长度，并不会把元素变 const；元素只读性由 `span<const T>` 表达。这一区别与 `const vector<T>&` 很不一样。
+
+函数若返回输入的子 span，应明确它与哪个参数所有者绑定；多个候选输入时，调用者很难从返回类型判断来源。领域 API 可返回带标签的结果或让调用者提供输出回调，以缩小悬空风险。
 
 ## 权威资料
 

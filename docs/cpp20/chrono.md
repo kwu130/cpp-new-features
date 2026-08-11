@@ -55,6 +55,14 @@ int main() {
 
 weekday 可从 sys_days/日期构造，支持 `Monday[2]` 之类“某月第几个星期几”以及 `Monday[last]` 组合。排班规则仍要处理节假日和地区日历，标准库只提供公历与星期结构。
 
+### weekday 与索引日历
+
+`weekday` 使用独立类型表示星期，并能通过 `weekday_indexed` 表达“第 n 个星期几”、通过 `weekday_last` 表达“最后一个星期几”。与年月组合后形成 `year_month_weekday` / `_last`，适合月度例会等规则，而不是先从每月 1 日手写偏移。
+
+indexed 值也可能暂时无效，最终组合应调用 `ok()`。例如某月未必存在第五个指定星期几。标准日历类型表达规则和有效性检查，不负责节假日、工作日调休或宗教历法。
+
+`weekday` 的数值编码不应被当作业务固定枚举序列直接持久化；使用命名常量和日历转换更清晰。显示本地化星期名称则属于 chrono 格式化/locale 层，不是 weekday 核心值本身。
+
 ## 月份算术与天数算术
 
 “一个月后”和“30 天后”不是同一业务概念。日历类型加 `months` 会保留年月日字段并可能产生无效月末；`sys_days` 加 `days` 则按连续日线推进。账单、订阅和排班必须先定义月末策略，再选择操作。
@@ -77,11 +85,25 @@ year_month 加 months 会规范化年月，例如十二月加两个月进入下�
 
 `sys_info` 描述某绝对区间的 UTC offset、save 和 abbreviation；`local_info` 描述本地时间映射的 unique/nonexistent/ambiguous 结果。审计复杂调度时应保留这种结构化状态，而不是只捕获异常文本。
 
+### 不存在与重复的当地时间
+
+春季跳时会形成一段从未出现的 local_time，默认严格转换可能抛 `nonexistent_local_time`；秋季回拨会让同一钟面时间对应两个 sys_time，可能抛 `ambiguous_local_time`。这两类不是解析格式错误，而是时区映射本身一对零/一对多。
+
+`choose::earliest` / `latest` 对重复时间选择较早或较晚瞬间，并为规定转换提供处理策略，但它不是所有业务的正确默认。金融成交应记录原绝对时间，日程系统可能询问用户，批处理可能选择偏移连续性；策略必须写进领域层。
+
+仅保存当地时间与缩写如 CST 仍无法消除歧义，因为缩写在不同地区复用且历史偏移会变化。可靠事件至少保存 sys_time；若要恢复用户语义，再附加 IANA 区域名和必要的规则版本信息。
+
 ### 闰秒与 UTC 时钟
 
 C++20 chrono 还增加 `utc_clock`、`tai_clock`、`gps_clock`、`file_clock` 及转换设施。system_clock 通常建模 Unix 风格系统时间，闰秒处理与 UTC 时间轴不同。跨时钟转换要使用 `clock_cast`/规定转换关系并确认工具链支持。
 
 `get_leap_second_info` 等设施依赖时区数据库中的闰秒信息。大多数业务时间戳仍选择 sys_time 加时区标识，但科学/通信领域必须明确时间尺度，不能把所有 epoch 整数都叫 UTC。
+
+`sys_time` 与 `utc_time` 代表不同时间尺度，跨闰秒附近的转换并非简单永恒固定偏移。`tai_clock` 没有 UTC 式插入闰秒，`gps_clock` 又有自己的 epoch/关系。协议文档应明确时钟、epoch 和闰秒策略三个维度。
+
+`steady_clock` 只保证单调，epoch 通常无跨进程含义，不能序列化后与另一机器的 steady 时间点比较。它适合测量持续时间和超时；墙上时间、审计事件才使用 system/UTC 相关时间轴。
+
+`file_clock` 服务文件时间类型与其他时钟转换，具体 epoch 及表示由实现/文件系统相关契约决定。不要把 filesystem 的 count 当 Unix 纳秒写入协议，应通过受支持转换或保留明确文件时间语义。
 
 ## 时钟与序列化
 

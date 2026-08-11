@@ -72,6 +72,14 @@ int main() {
 
 调用协程函数通常先完成参数处理和帧分配，再构造 Promise、取得返回对象并经过 `initial_suspend`。返回给调用方的不一定是结果值，而是由返回类型协议定义的任务/生成器句柄包装。
 
+### Promise 类型如何确定
+
+编译器通过 `std::coroutine_traits<ReturnType, ParameterTypes...>::promise_type` 确定 Promise。对非静态成员函数，隐式对象参数也参与 traits 参数序列。最常见做法是在返回类型中定义嵌套 `promise_type`；高级库也可以特化 `coroutine_traits`，但必须遵守标准库特化规则。
+
+Promise 构造会按规定尝试利用协程参数，因此框架可以把 allocator 或执行上下文送入 Promise。构造函数选择属于编译期协议，不能依赖从尚未执行的协程函数体给 Promise 赋值。参数副本的生命周期覆盖协程帧，而引用参数仍不拥有引用目标。
+
+普通局部对象若跨挂起点活跃，帧需要记录它是否已经构造，以便异常或提前销毁时只析构已建立对象。编译器生成的状态机不只是一个“下一行编号”，还包含异常清理和各局部生命周期分支。
+
 ### 帧分配失败
 
 若 Promise 类型提供合适的 `get_return_object_on_allocation_failure()`，协程帧分配会使用不抛形式并由该函数返回失败对象；否则分配失败通常抛 `bad_alloc`。自定义 Promise `operator new` 可以接收帧大小，并在满足签名规则时接收协程参数以选择 allocator。
@@ -92,6 +100,12 @@ Promise 不是 `std::promise`，两者只共享英文含义。它是由编译器
 
 非 void 结果通常由 `return_value(value)` 接收，void 结果用 `return_void()`；Promise 不能同时以冲突方式提供两者。`co_return expression` 不等于普通 `return expression`，它通过 Promise 协议保存结果并进入最终挂起流程。
 
+编译器创建返回对象与进入用户函数体不是同一件事：帧和 Promise 构造完成后调用 `get_return_object()`，随后才等待 `initial_suspend` 的 awaiter。对于 lazy 协程，调用方已经拿到任务对象，但函数体中第一个普通语句尚未执行；参数求值和 Promise 构造的副作用则已经发生。
+
+走到函数体末尾只适合具有 void 返回协议的协程；需要结果的协程必须执行相应 `co_return value`。普通 `return` 不能绕过 Promise 协议。Promise 接口缺失或同时声明冲突返回协议时，编译器应在协程定义处拒绝。
+
+最终挂起点承担“结果已就绪但帧可能仍需消费者读取”的边界。`final_suspend` 的 awaiter 不应抛异常；若在完成清理阶段再次抛出，已经很难向原调用者建立正常传播路径。任务库通常把用户异常更早存进 Promise，再在消费者的 `await_resume` 中重抛。
+
 ## `co_await` 协议
 
 等待表达式最终提供 awaiter，其 `await_ready` 判断是否无需挂起，`await_suspend` 接收当前协程句柄并安排恢复，`await_resume` 产生表达式结果。调度器、I/O 框架和任务类型的核心工作发生在 `await_suspend`，语言本身不会创建线程或事件循环。
@@ -103,6 +117,16 @@ awaitable 到 awaiter 的转换可能先经过 Promise 的 `await_transform`，�
 `await_ready()` 返回真时跳过挂起，直接执行 `await_resume()`，是同步快速完成路径。返回假时，协程先进入挂起状态，再调用 `await_suspend(handle)`；该函数可返回 `void`、`bool` 或另一个协程句柄，三种形式分别表达不同恢复控制。
 
 `await_suspend` 常把当前句柄发布给事件循环。句柄一旦被其他线程恢复，当前协程可能并发继续甚至销毁 awaiter，因此 `await_suspend` 发布后不应再访问可能随帧销毁的 `this` 状态。跨线程调度还需要普通 C++ 内存同步，协程关键字不会自动消除数据竞争。
+
+### 三种 `await_suspend` 返回形式
+
+返回 `void` 表示当前协程保持挂起，恢复责任已交给 awaiter/外部系统；返回 `bool` 时，`false` 表示不要保持挂起、当前协程立即继续，`true` 表示维持挂起；返回 `coroutine_handle` 则把执行权转移给指定协程。三者不是风格差异，而是不同调度协议。
+
+`await_ready()` 为真时完全不会调用 `await_suspend`，但仍会调用 `await_resume()` 取得值或抛出已完成操作的错误。快路径和慢路径必须在结果、异常与取消语义上保持一致，不能把必要状态只放在注册回调的慢路径建立。
+
+`await_resume()` 的返回值就是整个 `co_await` 表达式的结果。返回引用时，引用目标必须至少活到协程使用结束；将异步操作对象内部临时缓冲区的引用交给恢复后的代码，可能在下一次操作启动时立即失效。
+
+若 Promise 定义 `await_transform`，一般等待表达式会先被它转换；随后才考虑成员/非成员 `operator co_await` 或对象自身 awaiter 协议。框架可借此注入调度、取消检查和追踪，但过宽的 catch-all 转换会改变第三方 awaitable 的含义，应保留受约束的透传路径。
 
 <!-- example id="cpp20-manual-coroutine-resume" std="c++20" file="main.cpp" kind="single" compilers="all" output="before after" -->
 ```cpp
@@ -171,6 +195,14 @@ int main() {
 
 销毁挂起协程会析构 Promise、参数副本和仍存活的局部对象，再释放帧。消费者提前停止生成器时，这条路径必须正确释放资源。若帧正在另一个线程排队等待恢复，直接销毁会制造 use-after-free，取消协议必须先从调度器撤销或协调句柄。
 
+### 有类型与无类型句柄
+
+`coroutine_handle<Promise>` 能通过 `promise()` 访问特定 Promise；转换为 `coroutine_handle<>` 后仍可恢复、销毁或取地址，但失去类型安全的 Promise 访问。无类型句柄适合调度器队列，有类型句柄适合任务对象管理结果，两者都不是拥有型智能指针。
+
+`from_promise` 建立 Promise 引用到所属帧句柄的映射；`address()` / `from_address()` 用于底层擦除桥接。只有由兼容句柄产生的地址才能安全还原，任意对象地址不能伪装成协程帧。地址也不构成稳定序列化标识。
+
+句柄可复制意味着调度令牌很容易出现多个副本。框架必须用外层状态机确保只有一条路径执行 resume 或 destroy：完成回调、超时和取消若各自持有句柄而无仲裁，就会重复恢复或在销毁后恢复。
+
 ### 对称转移
 
 若 `await_suspend` 返回另一个 `coroutine_handle`，实现可直接把执行权转移给目标协程，而不是先返回某个调度循环再递归 resume。任务链在完成时把 continuation 句柄从 final awaiter 返回，可避免深链同步完成导致调用栈增长。
@@ -184,6 +216,12 @@ int main() {
 C++20 协程语言本身没有取消令牌。可把 `stop_token`、取消槽或业务标志整合进 awaitable：在挂起前检查取消，在注册 I/O 后能撤销回调，并处理取消与完成同时发生的竞态。
 
 协程可能在任意恢复它的线程继续，线程局部状态、GUI 线程亲和性和锁所有权都要纳入执行器契约。绝不要持有普通互斥锁跨越可能切换线程或长时间等待的 `co_await`，除非同步原语明确支持这种设计。
+
+取消至少要处理“尚未提交操作”“已提交等待完成”“完成与取消同时发生”三类状态。稳健 awaiter 往往用原子状态或受锁状态机选出唯一恢复者，并让败方只做资源清理。先检查布尔取消标志再注册回调会留下检查后立刻取消的窗口。
+
+销毁任务对象不必然等同取消底层 I/O。若操作系统或事件循环仍持有回调，它可能稍后使用已经释放的帧地址。任务析构策略必须先撤销/隔离外部回调，等待确认不再访问，或把回调状态放进独立共享所有权对象，再决定何时销毁协程帧。
+
+跨线程恢复需要发布 Promise 结果、awaiter 状态和 continuation 的普通内存同步。把句柄塞进没有同步的数据结构再由另一线程 resume 仍是数据竞争；协程语言只定义控制转移，不替代原子、互斥量或执行器队列的 happens-before 保证。
 
 ## 生成器与任务的协议差异
 

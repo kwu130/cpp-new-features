@@ -88,6 +88,16 @@ int main() {
 
 requires-expression 在替换语境中遇到不合法 requirement 时通常产生 `false`，而不是直接让整个翻译失败。但若表达式对任何可能模板实参都无效，或错误发生在模板化语境之外，仍可能是硬错误。不要用它掩盖拼写错误。
 
+### requires-expression 的局部参数
+
+`requires(T value, const U& other) { ... }` 中的参数只用于描述表达式的类型和值类别，不创建运行期对象，也没有存储、链接和生命周期。参数不能带默认实参，参数列表末尾也不能使用省略号表达 C 风格可变参数。数组和函数类型会按参数声明规则调整。
+
+这意味着可以用 `T&& value` 精确检查右值操作，用 `const T&` 检查只读接口，而不要求 T 真能在运行期默认构造。局部参数的名字只在 requirement 序列内部可见。
+
+复合 requirement `{ expression } noexcept -> Concept;` 按顺序检查：表达式能否形成、若写了 `noexcept` 是否确实不抛，最后把 `decltype((expression))` 作为首个模板实参交给返回类型 requirement 后的 Concept。双括号形式的 `decltype` 会保留引用和值类别，因此 `same_as<T>` 与 `same_as<T&>` 的选择必须准确。
+
+类型 requirement `typename T::value_type;` 只证明该名称是类型，并不要求该类型完整、可构造或满足其他操作。若实现还要按值创建它，应继续增加 `default_initializable`、`movable` 等真正使用到的约束。
+
 ### 四种约束放置方式
 
 `template<Concept T>` 是受约束类型模板参数；`template<class T> requires Concept<T>` 是前置 requires-clause；函数声明尾部还可写尾置 requires-clause；`Concept auto` 形参会形成缩写函数模板。四者可以组合，但公共接口应选最易读且能表达参数关系的位置。
@@ -116,6 +126,14 @@ Concept 也可约束普通 `auto` 变量和函数返回占位符的推导结果�
 
 Concept 定义本身应是稳定的语义接口。修改公共 Concept 的条件会改变大量重载可行性和特化选择，可能是源码兼容性变更，即便任何函数签名的文本都没变。
 
+### 参数映射与不合法映射
+
+复用 Concept 时，编译器会把外层模板参数映射到 Concept 定义中的参数，再形成原子约束。映射本身如果产生不合法类型，例如在不受保护的路径里形成 `V&*`，可能使程序不合法，而不是简单得到 false。组合约束要让“保护性”条件位于能短路后续映射的位置。
+
+约束满足结果会参与声明匹配和实例化。依赖程序中稍后出现的显式特化、宏差异或不一致声明来改变同一原子约束真值，会破坏编译器缓存和 ODR 假设。Concept 所依赖的 traits 与定制点应在首次使用前稳定定义。
+
+约束表达式的最终类型必须是 `bool`，不会像普通 `if` 条件那样接受任意显式/隐式“可转 bool”对象。类型萃取通常使用 `_v` 成员；把 `std::is_integral<T>` 类型对象本身误放进约束不是等价写法。
+
 ## 标准 Concepts 的语义层次
 
 `same_as`、`derived_from`、`convertible_to`、`common_reference_with` 等描述类型关系；`integral`、`floating_point`、`signed_integral` 描述基础类别；`constructible_from`、`assignable_from`、`swappable` 描述对象操作；`invocable`、`predicate`、`relation` 描述调用协议。
@@ -123,6 +141,12 @@ Concept 定义本身应是稳定的语义接口。修改公共 Concept 的条件
 部分标准 Concept 明确带有超出语法可检查范围的语义要求。例如 `equality_comparable` 期望相等关系满足规定性质，`strict_weak_order` 要求关系构成严格弱序。编译器只能验证表达式和类型，违反语义的类型仍可能“语法上满足”Concept，却使使用它的算法违反前置条件。
 
 `convertible_to<From, To>` 比单纯 `is_convertible_v` 还要求相应显式转换表达式成立，并附带结果相等性等语义要求。选标准 Concept 时应阅读完整契约，而不是只根据名字猜测。
+
+对象 Concept 也存在层级：`destructible`、`constructible_from`、`default_initializable`、`move_constructible`、`copy_constructible` 逐步组合能力；`movable` 还要求可赋值和可交换，`copyable` 在其上增加复制路径，`semiregular` 再增加默认构造，`regular` 最后加入相等可比较。名称描述的是整组语法与语义契约，不只是某一个同名特殊成员函数存在。
+
+调用 Concept 中，`invocable` 只要求能按 `invoke` 形成调用，而 `regular_invocable` 还附带不修改函数对象/实参及相同输入产生相等输出等语义期望；`predicate` 在其上要求结果可用于布尔判断。编译器无法验证确定性和无副作用，算法作者仍需文档和测试。
+
+标准 Concept 的模板参数顺序有时为偏序设计服务，例如 `derived_from<Derived, Base>`、`assignable_from<LHS, RHS>`。定义缩写接口时要确认被推导类型填入的是哪个位置；`Concept auto` 会把推导类型作为该 Concept 的第一个参数。
 
 ## 诊断与 API 设计
 
