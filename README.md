@@ -9,7 +9,7 @@
 | 标准 | 状态 | 入口 |
 | --- | --- | --- |
 | C++11 | 已完成 | [进入专题](docs/cpp11/README.md) |
-| C++14 | 计划中 | 完成后开放 |
+| C++14 | 已完成 | [进入专题](docs/cpp14/README.md) |
 | C++17 | 计划中 | 完成后开放 |
 | C++20 | 计划中 | 完成后开放 |
 
@@ -20,6 +20,7 @@
 ## 特性速查
 
 - C++11：[类型推导](docs/cpp11/type-deduction.md)、[移动语义](docs/cpp11/move-semantics.md)、[Lambda](docs/cpp11/lambdas.md)、[智能指针](docs/cpp11/smart-pointers.md)、[并发](docs/cpp11/concurrency.md)
+- C++14：[泛型 Lambda](docs/cpp14/lambdas.md)、[`decltype(auto)`](docs/cpp14/return-type-deduction.md)、[`constexpr`](docs/cpp14/compile-time.md)、[`make_unique`](docs/cpp14/make-unique.md)
 
 下面的最小程序同时用于验证文档示例链路：
 
