@@ -67,6 +67,62 @@ C++03 中，按值返回大型容器或把临时对象放入容器，语言层�
 - 移动操作应保持源和目标的不变量，并尽可能真实地标注 `noexcept`。
 - 转发函数只对需要保持值类别的参数使用 `std::forward`，普通业务参数不必套用完美转发。
 
+## 转发引用的重载验证
+
+完美转发的目标不是“总是移动”，而是让下游函数看到调用者原本提供的值类别。模板形参推导、引用折叠与 `std::forward` 三者缺一不可。若在转发函数中直接使用具名参数，它是左值表达式，右值信息会丢失。
+
+<!-- example id="cpp11-perfect-forwarding-categories" std="c++11" file="main.cpp" kind="single" compilers="all" output="lvalue rvalue" -->
+```cpp
+#include <iostream>
+#include <string>
+#include <utility>
+
+void category(const std::string&) { std::cout << "lvalue"; }
+void category(std::string&&) { std::cout << "rvalue"; }
+
+template <typename T>
+void relay(T&& value) {
+    category(std::forward<T>(value));
+}
+
+int main() {
+    std::string text = "data";
+    relay(text);
+    std::cout << ' ';
+    relay(std::string("temporary"));
+    std::cout << '\n';
+}
+```
+
+第一次调用中 T 推导为 `std::string&`，折叠后参数是左值引用；第二次 T 为 `std::string`，参数是右值引用。`forward<T>` 根据这个 T 有条件地转回右值。
+
+## `move_if_noexcept` 与容器强保证
+
+容器扩容要先在新存储中构造元素。如果移动中途抛异常且已经改变源元素，回滚旧容器会非常困难。标准库可以在“移动可能抛、复制可用”时选择复制，在移动不抛或对象只能移动时选择移动。
+
+<!-- example id="cpp11-move-if-noexcept" std="c++11" file="main.cpp" kind="single" compilers="all" output="copy selected" -->
+```cpp
+#include <iostream>
+#include <type_traits>
+#include <utility>
+
+struct Value {
+    Value() {}
+    Value(const Value&) {}
+    Value(Value&&) noexcept(false) {}
+};
+
+int main() {
+    Value value;
+    typedef decltype(std::move_if_noexcept(value)) Selected;
+    static_assert(std::is_same<Selected, const Value&>::value,
+                  "copy path is selected when move may throw");
+    std::cout << "copy selected\n";
+}
+```
+
+这不意味着所有容器实现都必须在每个操作中调用名为 `move_if_noexcept` 的函数，而是说明标准库常用的类型级决策。为真实不抛移动构造标注 `noexcept`，能让容器采用更高效且仍满足异常保证的路径。
+
 ## 权威资料
 
 - [引用与引用折叠](https://eel.is/c++draft/dcl.ref)

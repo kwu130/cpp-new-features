@@ -54,6 +54,40 @@ int main() {
 
 检查回调生命周期是否超过捕获对象；确认算法是否允许复制或并发调用回调；避免默认捕获掩盖真实依赖；高频路径测量 `std::function` 类型擦除成本。
 
+## 无捕获 Lambda 与函数指针
+
+无捕获 Lambda 可以隐式转换为具有匹配参数和返回类型的函数指针，这让现代局部写法能够传给旧式 C 回调接口。转换后的函数没有闭包对象状态；一旦捕获任何值，就不再具备这种转换。
+
+带状态闭包则是普通对象。按值捕获的数据成员会随闭包复制，`mutable` 只允许非 const 调用运算符修改这些副本，不会修改外围原变量。
+
+<!-- example id="cpp11-lambda-state-function-pointer" std="c++11" file="main.cpp" kind="single" compilers="all" output="callback=42, state=2, outside=0" -->
+```cpp
+#include <iostream>
+
+int call(int (*function)(int), int value) {
+    return function(value);
+}
+
+int main() {
+    const int callback = call([](int value) { return value * 2; }, 21);
+
+    int outside = 0;
+    auto counter = [outside]() mutable {
+        return ++outside;
+    };
+    counter();
+    const int state = counter();
+
+    std::cout << "callback=" << callback
+              << ", state=" << state
+              << ", outside=" << outside << '\n';
+}
+```
+
+## 闭包复制的工程含义
+
+标准算法可以复制谓词，回调注册系统也可能保存多个副本。若状态必须在副本之间共享，应显式捕获 `shared_ptr<State>` 或引用一个生命周期受控的状态，而不是假设算法始终调用原闭包。反过来，独立副本正适合线程各自维护局部计数，避免不必要的同步。
+
 ## 权威资料
 
 - [Lambda 表达式](https://eel.is/c++draft/expr.prim.lambda)

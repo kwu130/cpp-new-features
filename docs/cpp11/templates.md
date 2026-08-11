@@ -55,6 +55,34 @@ C++11 中通常通过递归展开参数包，并提供终止重载。C++17 的�
 - 使用转发引用时才配合 `std::forward<Types>(values)...`。
 - 关注编译时间和代码膨胀；对大量类型共享的逻辑移到非模板实现中。
 
+## 有序展开参数包
+
+C++11 函数实参求值顺序不能用于实现有副作用的左到右遍历。常见方案是把每一步放进初始化列表，因为初始化器元素按顺序求值。额外的首元素保证空参数包时数组仍有合法长度。
+
+<!-- example id="cpp11-ordered-pack-expansion" std="c++11" file="main.cpp" kind="single" compilers="all" output="1 2 3" -->
+```cpp
+#include <iostream>
+
+template <typename... Values>
+void print_in_order(const Values&... values) {
+    bool first = true;
+    using Expansion = int[];
+    (void)Expansion{0, ((std::cout << (first ? "" : " ") << values,
+                         first = false), 0)...};
+    std::cout << '\n';
+}
+
+int main() {
+    print_in_order(1, 2, 3);
+}
+```
+
+这个技巧依赖初始化列表的顺序保证，而不是依赖编译器碰巧从左到右计算函数参数。C++17 的逗号折叠表达式能更直接表达同一意图。
+
+## 别名不是强类型
+
+`using UserId = int` 只提供另一个拼写，不能阻止把订单编号传给用户编号接口。需要真正区分领域值时，应定义包装结构体并显式提供比较、哈希与转换。别名模板适合简化类型组合，不适合建立新的类型安全边界。
+
 ## 权威资料
 
 - [可变参数模板](https://eel.is/c++draft/temp.variadic)

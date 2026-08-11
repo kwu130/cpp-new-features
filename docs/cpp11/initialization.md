@@ -65,6 +65,44 @@ int main() {
 - 泛型工厂常用圆括号完美转发，因为无条件改成花括号会改变重载选择。
 - 接口的空指针默认值写 `nullptr`，不要写 `0` 或 `NULL`。
 
+## 列表构造函数的重载优先级
+
+列表初始化的两阶段规则可能让看似更匹配的普通构造函数失去机会。第一阶段只用整个列表尝试 `initializer_list` 构造函数；只要存在可行候选，就不会进入普通构造函数阶段。这也是给成熟类型新增列表构造函数可能破坏源代码行为的原因。
+
+空列表还有特殊性：若类型拥有默认构造函数，`T{}` 通常优先执行值初始化而不是把空列表传给 `initializer_list` 构造函数。阅读重载集合时必须结合完整初始化形式，而不是只数参数个数。
+
+<!-- example id="cpp11-list-overload-nullptr" std="c++11" file="main.cpp" kind="single" compilers="all" output="list=2, pointer" -->
+```cpp
+#include <cstddef>
+#include <initializer_list>
+#include <iostream>
+
+class Choice {
+public:
+    Choice(int, int) : selected_("pair") {}
+    Choice(std::initializer_list<int> values)
+        : selected_(values.size() == 2 ? "list=2" : "list") {}
+    const char* selected() const { return selected_; }
+
+private:
+    const char* selected_;
+};
+
+const char* select(int) { return "integer"; }
+const char* select(int*) { return "pointer"; }
+
+int main() {
+    const Choice choice{10, 20};
+    std::cout << choice.selected() << ", " << select(nullptr) << '\n';
+}
+```
+
+如果把 `choice{10, 20}` 改成 `choice(10, 20)`，结果将选择普通双整数构造函数。`select(nullptr)` 则只匹配指针方向；写 `select(0)` 会优先匹配整数重载。
+
+## 聚合初始化与类演进
+
+聚合对象可以按成员声明顺序用列表初始化。给聚合新增私有成员、虚函数或某些构造函数可能使它不再满足对应标准版本的聚合定义，从而让调用点失效。公共配置结构如果依赖聚合初始化，应把“保持聚合”视作源代码兼容承诺。
+
 ## 权威资料
 
 - [列表初始化](https://eel.is/c++draft/dcl.init.list)

@@ -56,6 +56,45 @@ for (auto begin = begin-expr, end = end-expr; begin != end; ++begin) {
 
 主示例第一轮使用 `auto&` 原地加倍，第二轮使用 `const auto&` 读取。实践中还要确认范围表达式只求值一次是否符合预期、自定义 `begin/end` 是否返回兼容哨兵，以及循环体是否改变容器结构。
 
+## 为用户类型提供范围协议
+
+自定义类型不必继承任何基类。只要能通过成员或关联查找得到 `begin` 与 `end`，且迭代器支持比较、递增和解引用，就可以进入范围 `for`。成员方案适合类型自己拥有遍历语义；自由函数方案适合适配无法修改的类型。
+
+C++11 展开中开始和结束迭代器需要能以同一 `auto` 声明形式表示；C++17 放宽为不同类型，为哨兵范围铺路。编写以 C++11 为最低版本的类型时，不应依赖异构 sentinel。
+
+<!-- example id="cpp11-custom-range" std="c++11" file="main.cpp" kind="single" compilers="all" output="sum=10" -->
+```cpp
+#include <cstddef>
+#include <iostream>
+
+class Numbers {
+public:
+    Numbers(int* data, std::size_t size) : data_(data), size_(size) {}
+    int* begin() { return data_; }
+    int* end() { return data_ + size_; }
+
+private:
+    int* data_;
+    std::size_t size_;
+};
+
+int main() {
+    int storage[] = {1, 2, 3, 4};
+    Numbers numbers(storage, 4);
+    int sum = 0;
+    for (const int value : numbers) {
+        sum += value;
+    }
+    std::cout << "sum=" << sum << '\n';
+}
+```
+
+这个范围只借用外部数组，`Numbers` 不能比 `storage` 活得更久。它的迭代器是裸指针，因此元素连续、随机访问且没有额外对象；这属于该实现选择，不是范围 `for` 对所有迭代器的要求。
+
+## 删除元素时为什么要回到显式循环
+
+范围 `for` 隐藏了当前迭代器，无法接收 `erase` 返回的下一个有效迭代器。对 `vector`、`list`、关联容器执行条件删除时，应使用该容器规定的显式迭代器模式，或后续标准提供的 `erase_if`。在隐藏循环内修改结构会让下一次递增访问失效状态。
+
 ## 权威资料
 
 - [范围 for 语句](https://eel.is/c++draft/stmt.ranged)

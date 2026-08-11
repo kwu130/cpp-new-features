@@ -46,6 +46,36 @@ C++11 的非构造 `constexpr` 函数体基本只能包含一条 `return`，因�
 
 示例的 `factorial(5)` 位于 `constexpr` 变量初始化中，强制编译期求值；随后 `static_assert` 再验证结果。普通运行期输入仍可以调用同一函数。实践中应让编译期函数保持纯粹、输入规模受控，并为关键边界增加静态断言。
 
+## `constexpr` 构造函数与字面类型
+
+自定义类型要进入常量表达式，必须满足对应版本的字面类型要求，并通过 `constexpr` 构造函数初始化所有成员。C++11 构造函数体限制很严，通常把计算放在成员初始化列表或其他 constexpr 函数中。
+
+<!-- example id="cpp11-constexpr-value-object" std="c++11" file="main.cpp" kind="single" compilers="all" output="area=12" -->
+```cpp
+#include <iostream>
+
+class Rectangle {
+public:
+    constexpr Rectangle(int width, int height)
+        : width_(width), height_(height) {}
+    constexpr int area() const { return width_ * height_; }
+
+private:
+    int width_;
+    int height_;
+};
+
+int main() {
+    constexpr Rectangle rectangle(3, 4);
+    static_assert(rectangle.area() == 12, "area is a compile-time invariant");
+    std::cout << "area=" << rectangle.area() << '\n';
+}
+```
+
+## 常量求值与运行时对象共用接口
+
+同一个 `Rectangle::area()` 也能用于运行时构造的矩形。设计良好的 constexpr API 不需要维护两套算法；它只是避免在实现中使用当前标准不允许常量求值的操作。后续标准扩大允许范围时，接口通常无需改变。
+
 ## 权威资料
 
 - [constexpr 与常量表达式](https://eel.is/c++draft/dcl.constexpr)

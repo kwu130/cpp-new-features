@@ -79,6 +79,45 @@ int main() {
 
 先问“这里需要值还是引用”，再决定是否写 `&`；确认生命周期比引用长；对可能是代理对象的表达式查阅返回类型；在模板边界用 `static_assert` 或类型萃取验证关键推导结论。
 
+## 数组、函数与代理类型
+
+按值推导会执行数组到指针、函数到函数指针的退化。引用形式不会退化，所以泛型函数可以通过数组引用保留长度。这个差异不仅影响类型名称，还决定 `sizeof`、重载和模板参数能否看到原始边界。
+
+`decltype` 不会执行数组退化：对数组变量名使用 `decltype` 得到完整数组类型。对函数名使用 `decltype` 得到函数类型，而不是函数指针。需要声明“与表达式完全一致”的中间类型时，它比 `auto` 更精确。
+
+标准库中的代理引用是另一个高风险区域。`vector<bool>::reference`、某些迭代器解引用结果和表达式模板对象看起来像普通值，却可能只保存对底层对象的间接访问。使用 `auto` 会保存代理本身；若要立即取得业务值，应显式写目标类型。
+
+<!-- example id="cpp11-auto-decltype-arrays" std="c++11" file="main.cpp" kind="single" compilers="all" output="length=3, first=9" -->
+```cpp
+#include <cstddef>
+#include <iostream>
+#include <type_traits>
+
+template <std::size_t Size>
+std::size_t array_length(const int (&)[Size]) {
+    return Size;
+}
+
+int main() {
+    int values[3] = {1, 2, 3};
+    auto pointer = values;
+    auto& array = values;
+    decltype((values[0])) first = values[0];
+    first = 9;
+
+    static_assert(std::is_same<decltype(pointer), int*>::value,
+                  "by-value auto decays an array");
+    static_assert(std::is_same<decltype(array), int (&)[3]>::value,
+                  "auto reference keeps the bound");
+    std::cout << "length=" << array_length(array)
+              << ", first=" << values[0] << '\n';
+}
+```
+
+## 选择 `auto` 还是 `decltype`
+
+局部变量由初始化表达式自然决定且不关心精确引用属性时使用 `auto`。需要复制表达式的声明类型、编写尾置返回类型或验证值类别时使用 `decltype`。若接口必须稳定，显式业务类型通常比两者都更容易审查。
+
 ## 权威资料
 
 - [自动类型推导与占位类型](https://eel.is/c++draft/dcl.spec.auto)
