@@ -55,3 +55,10 @@ for (auto begin = begin-expr, end = end-expr; begin != end; ++begin) {
 ## 示例解析与检查清单
 
 主示例第一轮使用 `auto&` 原地加倍，第二轮使用 `const auto&` 读取。实践中还要确认范围表达式只求值一次是否符合预期、自定义 `begin/end` 是否返回兼容哨兵，以及循环体是否改变容器结构。
+
+## 权威资料
+
+- [范围 for 语句](https://eel.is/c++draft/stmt.ranged)
+- [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
+
+提案用于理解设计动机和最初采用的方案；规范性行为应以对应标准版本和后续缺陷修正后的工作草案为准。

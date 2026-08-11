@@ -42,3 +42,10 @@ int main() {
 `namespace project::config` 等价于逐层嵌套声明，减少缩进但不改变名称查找。版本化 API 可结合内联命名空间，而普通嵌套语法本身不会让命名空间“内联”。
 
 头文件中的配置优先 `inline constexpr`；可变全局状态应尽量避免；必须存在时明确初始化顺序、线程安全和测试隔离策略。
+
+## 权威资料
+
+- [P0386R2：内联变量](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0386r2.pdf)
+- [CPP17 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0636r3.html)
+
+提案用于理解设计动机和最初采用的方案；规范性行为应以对应标准版本和后续缺陷修正后的工作草案为准。

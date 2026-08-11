@@ -42,3 +42,10 @@ int main() {
 ## 示例解析与实践
 
 示例只验证行号为正，避免把具体行号写成脆弱输出。工程日志接口可按值接收默认 location，异步日志需复制字符串内容还是只保存静态指针要根据工具链保证审查，并对外部可见日志执行路径脱敏。
+
+## 权威资料
+
+- [P1208R6：source_location](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1208r6.pdf)
+- [CPP20 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2131r0.html)
+
+提案用于理解设计动机和最初采用的方案；规范性行为应以对应标准版本和后续缺陷修正后的工作草案为准。

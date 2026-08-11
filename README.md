@@ -42,3 +42,5 @@ int main() {
 ## 授权
 
 文档采用 [CC BY 4.0](LICENSE.md) 许可。参与贡献前请阅读 [贡献指南](CONTRIBUTING.md)。
+
+规范语义和版本归属以 [权威资料与引用规范](docs/official-sources.md) 中列出的 WG21 工作草案与提案为准。

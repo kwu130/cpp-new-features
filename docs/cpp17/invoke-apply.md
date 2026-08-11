@@ -45,3 +45,10 @@ int main() {
 ## 示例解析与使用边界
 
 示例先由 `apply` 展开二元素元组，Lambda 内再用 `invoke` 调用成员函数指针。真实代码若只调用一个已知成员，直接语法更清楚；这些工具应集中用于任务调度器、反射式字段适配、元组反序列化等真正需要统一调用协议的层。
+
+## 权威资料
+
+- [P0209R2：invoke](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0209r2.html)
+- [CPP17 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0636r3.html)
+
+提案用于理解设计动机和最初采用的方案；规范性行为应以对应标准版本和后续缺陷修正后的工作草案为准。

@@ -41,3 +41,10 @@ C++20 提供 `year`、`month`、`day` 及其组合。`year_month_day` 便于民�
 ## 示例解析与测试
 
 示例把闰年 2 月 28 日与 3 月 1 日转换为连续日，正确得到两天。测试应覆盖闰日、月末、DST 跳跃、重复时间、时区规则更新和目标环境缺少 tzdb 的降级路径。
+
+## 权威资料
+
+- [P0355R7：日历与时区](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0355r7.html)
+- [CPP20 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2131r0.html)
+
+提案用于理解设计动机和最初采用的方案；规范性行为应以对应标准版本和后续缺陷修正后的工作草案为准。

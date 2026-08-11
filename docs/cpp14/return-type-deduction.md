@@ -51,3 +51,10 @@ int main() {
 ## 示例解析与检查清单
 
 主示例中 `first` 返回带括号的 `front()` 左值，因此调用结果是 `int&`，赋值直接修改容器。检查每个 `decltype(auto)` 返回路径的值类别、被引用对象寿命和代理语义；若不需要透明转发，优先用明确返回类型。
+
+## 权威资料
+
+- [N3638：返回类型推导](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3638.html)
+- [CPP14 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p1319r0.html)
+
+提案用于理解设计动机和最初采用的方案；规范性行为应以对应标准版本和后续缺陷修正后的工作草案为准。

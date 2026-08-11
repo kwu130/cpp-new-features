@@ -49,3 +49,10 @@ int main() {
 ## 示例解析与实践
 
 工作线程通过 atomic_ref 写 counter，再发布 state=1；主线程等待 state 改变后原子增加 counter。工程中用版本计数防 ABA，记录对齐与访问协议，避免为大量短暂对象随意创建 atomic_ref，并在目标平台检查锁自由性质与等待延迟。
+
+## 权威资料
+
+- [P0019R8：atomic_ref](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0019r8.html)
+- [CPP20 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2131r0.html)
+
+提案用于理解设计动机和最初采用的方案；规范性行为应以对应标准版本和后续缺陷修正后的工作草案为准。

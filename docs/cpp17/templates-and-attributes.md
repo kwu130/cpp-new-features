@@ -54,3 +54,10 @@ int main() {
 ## 示例解析与工程实践
 
 示例用值模板生成常量，用 `nodiscard` 标记必须处理的分类结果，并显式声明 switch 贯穿。库作者应把 `nodiscard` 用在错误码、资源句柄和纯计算结果上，但避免为所有函数机械添加导致警告疲劳；使用方不应通过无意义强制转换掩盖真正遗漏。
+
+## 权威资料
+
+- [P0127R2：auto 非类型模板参数](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0127r2.html)
+- [CPP17 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0636r3.html)
+
+提案用于理解设计动机和最初采用的方案；规范性行为应以对应标准版本和后续缺陷修正后的工作草案为准。

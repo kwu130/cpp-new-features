@@ -39,3 +39,10 @@ int main() {
 ## 示例解析与实践
 
 示例只做纯词法组合，所以不依赖当前目录是否存在。实际工程应明确相对路径基准、符号链接策略、错误恢复、遍历顺序和信任边界，再执行读写。
+
+## 权威资料
+
+- [P0218R1：Filesystem](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0218r1.html)
+- [CPP17 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0636r3.html)
+
+提案用于理解设计动机和最初采用的方案；规范性行为应以对应标准版本和后续缺陷修正后的工作草案为准。

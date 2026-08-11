@@ -45,3 +45,10 @@ C++11 的非构造 `constexpr` 函数体基本只能包含一条 `return`，因�
 ## 示例解析与实践
 
 示例的 `factorial(5)` 位于 `constexpr` 变量初始化中，强制编译期求值；随后 `static_assert` 再验证结果。普通运行期输入仍可以调用同一函数。实践中应让编译期函数保持纯粹、输入规模受控，并为关键边界增加静态断言。
+
+## 权威资料
+
+- [constexpr 与常量表达式](https://eel.is/c++draft/dcl.constexpr)
+- [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
+
+提案用于理解设计动机和最初采用的方案；规范性行为应以对应标准版本和后续缺陷修正后的工作草案为准。
