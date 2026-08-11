@@ -147,6 +147,19 @@ API 若只需要遍历，不应暴露具体容器类型；C++11 可用迭代器�
 | 哈希一致性 | 相等键必须产生相同哈希 |
 | 自定义键 | hash 与 equality 必须表达同一等价关系 |
 
+## 容器增强专项审查
+
+- array 的 N 是否属于接口契约而非运行期数据？
+- 空 array 是否仍调用 front/back？
+- unordered 自定义 hash 与 equality 是否完全一致？
+- 对抗性输入是否可能退化哈希复杂度？
+- reserve/rehash 后是否仍保存旧迭代器？
+- emplace 参数是否真避免临时而非先在调用点构造？
+- 插入冲突时构造成本和实参移动状态是否明确？
+- vector 扩容后旧元素引用是否失效？
+- max_load_factor 调整是否导致后续 rehash 峰值？
+- 是否错误依赖 unordered 遍历顺序稳定？
+
 ## 权威资料
 
 - [容器库要求](https://eel.is/c++draft/containers)

@@ -437,6 +437,32 @@ int main() {
 | 循环引用 | 不会形成共享环 | 可能泄漏 | 用于打断 shared 环 |
 | 典型工厂 | `unique_ptr(new T)` / C++14 make_unique | `make_shared<T>` | 从 shared_ptr 构造 |
 
+## 智能指针专项审查
+
+- 所有权是唯一、共享还是只观察，类型是否准确表达？
+- unique_ptr 自定义删除器是否匹配资源获取方式？
+- 是否在 release 后立即把裸资源交给新 RAII 所有者？
+- shared_ptr 是否从同一裸指针创建了两个控制块？
+- make_shared 的对象与控制块共同分配寿命是否可接受？
+- shared_ptr 别名构造是否保持正确所有者但指向子对象？
+- enable_shared_from_this 是否只在对象已有 shared 控制块后调用？
+- 回调/父子图是否因 shared_ptr 环永不释放？
+- weak_ptr::lock 失败是否作为正常竞态处理？
+- use_count 是否仅用于观察而非线程同步决策？
+
+## 智能指针故障定位线索
+
+- 对象析构从未发生：先画 shared_ptr 强引用图，寻找闭环。
+- 对象提前析构：检查是否只保存 weak_ptr 或裸观察指针。
+- double free：检查是否从同一裸指针独立构造多个 shared_ptr。
+- bad_weak_ptr：检查 shared_from_this 调用时控制块是否已经建立。
+- 删除函数不匹配：核对 new/new[]、C 获取函数与删除器配对。
+- unique_ptr 无法放入容器：确认调用点使用移动且容器操作支持移动。
+- use_count 波动：它只是并发快照，不能作为“现在安全独占”的判断。
+- make_shared 后内存迟迟不归还：弱引用可能仍保留合并控制块分配。
+- PImpl 编译报 incomplete type：把拥有类析构定义移到实现类型完整处。
+- 异步回调悬空：根据语义捕获 shared 所有权或 weak 后在执行时 lock。
+
 ## 权威资料
 
 - [智能指针库规范](https://eel.is/c++draft/mem)

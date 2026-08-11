@@ -184,6 +184,19 @@ int main() {
 | `regex_search` | 查找任意匹配子序列 |
 | `smatch` | 保存指向原字符串的匹配范围，原数据需存活 |
 
+## 实用库专项审查
+
+- duration 转换是否发生截断或表示类型溢出？
+- 两个 time_point 是否属于可比较的同一时钟？
+- 测耗时是否使用 steady_clock？
+- 时间戳序列化是否记录 period 和 epoch？
+- 随机引擎是否按可复现测试与生产熵分别播种？
+- 是否错误每次取样都重新创建/播种引擎？
+- 分布参数范围是否有效并与引擎寿命分离？
+- random_device 的熵性质是否在目标平台确认？
+- regex 构造错误是否捕获 regex_error？
+- match_results 是否越过原字符串生命周期保存？
+
 ## 权威资料
 
 - [时间工具](https://eel.is/c++draft/time)

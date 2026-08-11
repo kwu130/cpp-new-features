@@ -128,6 +128,19 @@ C++17 的 `invoke` 返回类型写作 `invoke_result_t` 所描述的类型，`vo
 | 右值 tuple | 元素值类别可转发为右值 |
 | `make_from_tuple<T>` | 展开元素直接构造 T |
 
+## Invoke/apply 专项审查问题
+
+- 成员指针的对象实参是否存活且类型匹配？
+- 传入对象、引用包装器或指针的选择是否保留 const？
+- invoke 返回引用是否被 auto 意外复制？
+- 空函数/成员指针是否可能被实际调用？
+- is_invocable 查询的值类别是否与真实 forward 一致？
+- is_invocable_r 的“可转换”是否满足精确协议？
+- apply 右值 tuple 是否意外移动了仍需使用的元素？
+- tuple-like 的 size、element、get 是否完全一致？
+- 空 tuple 是否能自然调用零参数目标？
+- 已知普通调用是否无需引入 invoke/apply 增加复杂度？
+
 ## 权威资料
 
 - [P0209R2：invoke](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0209r2.html)

@@ -157,6 +157,19 @@ int main() {
 | 无值异常态 | 空 optional | `valueless_by_exception` | 构造失败后可能为空 |
 | 选择原则 | 正常缺失 | 有限代数数据类型 | 真正开放扩展边界 |
 
+## 词汇类型专项审查问题
+
+- “缺失”是否需要错误原因，optional 是否信息不足？
+- optional 解引用前是否有状态证明？
+- optional<reference_wrapper<T>> 的目标是否持续存活？
+- variant 第一备选是否支持预期默认构造？
+- 转换构造是否因多个备选隐式转换而歧义？
+- 访问者是否覆盖全部备选及多 variant 笛卡尔积？
+- 是否处理 valueless_by_exception 而非假定永不发生？
+- any 所存类型是否满足可复制要求？
+- any_cast 是否要求精确类型而代码却期待数值转换？
+- any 是否错误跨越不稳定 RTTI/标准库 ABI 边界？
+
 ## 权威资料
 
 - [P0088R3：variant](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0088r3.html)

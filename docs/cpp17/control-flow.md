@@ -171,6 +171,19 @@ discarded statement 中的 return 不参与当前实例的 auto 返回类型推�
 | `if constexpr` | 丢弃分支仍必须通过非依赖语法检查 |
 | 模板返回推导 | 丢弃 return 不参与当前特化返回类型推导 |
 
+## 控制流专项审查问题
+
+- 结构化绑定是否错误复制了本应修改的对象？
+- tuple_size 特化存在后，get/tuple_element 协议是否完整一致？
+- 私有成员或基类布局是否使成员绑定路径不可用？
+- C++17 是否误捕获结构化绑定名进入 Lambda？
+- init-statement 对象析构时点是否覆盖两个分支？
+- init 名称是否与条件声明发生冲突？
+- if constexpr 条件是否为可用常量表达式？
+- 丢弃分支是否仍包含非依赖语法/名称硬错误？
+- 嵌套模板中的条件是否仍依赖当前特化？
+- 返回类型是否正确排除当前特化的丢弃 return？
+
 ## 权威资料
 
 - [P0217R3：结构化绑定规范措辞](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0217r3.html)

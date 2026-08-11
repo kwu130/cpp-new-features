@@ -132,6 +132,34 @@ atomic_ref 的构造与复制不取得底层所有权，也不会登记生命周
 
 工作线程通过 atomic_ref 写 counter，再发布 state=1；主线程等待 state 改变后原子增加 counter。工程中用版本计数防 ABA，记录对齐与访问协议，避免为大量短暂对象随意创建 atomic_ref，并在目标平台检查锁自由性质与等待延迟。
 
+## 原子接口速查
+
+| 接口/性质 | 关键语义 |
+| --- | --- |
+| `wait(old)` | 值表示仍等于 old 时阻塞，返回前重新检查 |
+| `notify_one` | 唤醒至少一个当前等待者，不累计事件 |
+| `notify_all` | 唤醒全部当前等待者，可能产生惊群 |
+| wait 内存序 | 类似加载，不允许 release/acq_rel |
+| release store + acquire wait | 可发布旁边普通数据 |
+| ABA | 值变走又变回 old 可能无法观察中间事件 |
+| `atomic_ref<T>` | 非拥有地为既有 T 提供原子访问 |
+| `required_alignment` | 目标地址必须满足，可能大于 alignof(T) |
+| 混合普通访问 | 并发期间与 atomic_ref 混用会数据竞争 |
+| `is_lock_free` | 非 lock-free 仍具原子语义，可能内部加锁 |
+
+## 原子等待专项审查问题
+
+- 生产者是否先修改状态再 notify？
+- 消费者是否在 wait 返回后重新检查完整业务状态？
+- 纯布尔状态是否会因 ABA 丢失中间事件？
+- payload 发布是否有匹配的 release/acquire 链？
+- wait 是否错误使用 release 或 acq_rel 内存序？
+- notify_one 的任意唤醒是否适合当前消费者模型？
+- atomic_ref 目标是否满足 required_alignment？
+- 同一底层对象并发访问是否全部采用原子协议？
+- atomic_ref 生命周期结束前是否可能销毁目标对象？
+- lock-free 与跨进程可用性是否在目标平台实际验证？
+
 ## 权威资料
 
 - [P0019R8：atomic_ref](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0019r8.html)

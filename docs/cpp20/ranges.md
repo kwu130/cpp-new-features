@@ -158,6 +158,47 @@ Range-for 与管道天然配合，因为语言会分别获取 begin/end。算法
 
 示例先惰性过滤偶数，再在解引用时平方，最终只遍历一次源容器。设计管道时标记所有者、确认遍历类别、让转换保持纯净；当结果需要长期保存、排序、随机访问或反复使用时，及时物化到容器。
 
+## Range/View 能力速查
+
+| 设施 | 关键语义 |
+| --- | --- |
+| `range<R>` | 对 R& 可取得 begin/end 并形成迭代协议 |
+| `sized_range` | 可按规定复杂度取得长度 |
+| `common_range` | 迭代器和哨兵类型相同 |
+| `contiguous_range` | 元素连续并满足地址关系 |
+| `view` | 轻量范围表示，不等同于一定非拥有 |
+| `views::all` | 把输入规范化为 ref/owning/已有 view |
+| `borrowed_range` | 范围对象销毁后迭代器仍不因此悬空 |
+| `ranges::dangling` | 阻止明显的临时非 borrowed 迭代器误用 |
+| projection | 比较前通过 invoke 提取元素字段 |
+| `subrange` | 非拥有地包装迭代器、哨兵和可选大小 |
+
+## Ranges 专项审查问题
+
+- 管道底层范围由谁拥有，何时销毁或重分配？
+- View 是否只满足 input_range，却被代码重复遍历？
+- filter/transform 中的函数对象是否含副作用或短寿命引用捕获？
+- 算法实际需要的 iterator/range Concept 是否被准确约束？
+- 返回迭代器面对临时非 borrowed range 时是否变成 dangling？
+- 投影是否稳定、只读并形成严格弱序所需关系？
+- 旧算法是否错误要求 common iterator/end，而当前 View 使用异型哨兵？
+- 惰性转换是否因多次解引用重复昂贵计算？
+- const View 是否真的能调用 begin，而非凭直觉假定？
+- 结果跨线程、排序或重复访问前是否应该先物化？
+
+## Ranges 故障定位线索
+
+- 编译器报告 not range：先分别验证 ranges::begin 和 ranges::end。
+- 报 sentinel_for 失败：检查 end 类型能否与 iterator 双向比较。
+- sort 不可用：核对 random_access、sortable、投影和关系四层约束。
+- 旧算法拒绝 View：检查 iterator/end 是否异型并考虑 common_view。
+- 结果为 dangling：算法接收了临时非 borrowed range。
+- 第二次遍历为空：当前管道可能只满足单遍 input_range。
+- const 管道无法 begin：谓词 const-callable 或适配器缓存契约不满足。
+- 元素修改未落到底层：transform 可能按值返回而非引用。
+- 运行变慢：检查 filter 重复扫描、transform 重算和大型闭包捕获。
+- 偶发悬空：从最外 View 逐层追踪到最终 owning/ref_view 与所有者。
+
 ## 权威资料
 
 - [P0896R4：Ranges](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0896r4.pdf)

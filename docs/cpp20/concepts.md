@@ -164,6 +164,47 @@ Concept 完全在编译期工作，不为对象增加标签或虚调用。它可
 
 示例把算术类别命名为 `Arithmetic`，又在 `add` 上增加“整数且至少四字节”的约束。真实 Concept 应尽量基于操作能力而非 `sizeof` 等偶然表示。审查时确认名称表达语义、约束不强于实现需要、重载之间存在明确偏序，并为不满足调用保留可理解诊断。
 
+## 约束形式速查
+
+| 形式 | 关键语义 |
+| --- | --- |
+| `template<C T>` | 约束一个模板类型参数 |
+| `C auto value` | 缩写函数模板/占位类型约束 |
+| 前置 `requires C<T>` | 位于模板头之后，适合参数总体条件 |
+| 尾置 `requires` | 可引用函数形参相关类型/表达式 |
+| 简单 requirement | 只检查表达式能否形成，不执行 |
+| 类型 requirement | `typename T::x;` 只检查名称表示类型 |
+| 复合 requirement | 可检查表达式、noexcept 和结果 Concept |
+| 嵌套 requirement | `requires BooleanConstraint;` |
+| 原子约束 | 身份源于表达式和参数映射，不只是真值 |
+| subsumption | 通过规范化比较更受约束候选，不做任意定理证明 |
+
+## Concepts 专项审查问题
+
+- 函数体是否只使用约束已经承诺的操作？
+- 是否把可复用条件抽成命名 Concept，保证原子约束身份一致？
+- 合取顺序是否先检查名称存在，再访问依赖成员？
+- 缩写形参的多个 `auto` 是否被误认为同一类型？
+- requirement 使用的 `T`、`T&`、`T&&` 是否反映真实值类别？
+- `convertible_to`、`regular` 等标准 Concept 的语义要求是否也成立？
+- 重载之间是否存在编译器能识别的明确 subsumption？
+- 是否为错误类型编写负向编译测试并检查诊断落点？
+- Concept 修改是否会改变公共重载选择和源码兼容性？
+- 是否避免用 Concept 冒充无法静态验证的运行期业务不变量？
+
+## Concepts 诊断阅读顺序
+
+- 先找最外层“constraints not satisfied”的候选，而非立即阅读模板回溯底部。
+- 展开命名 Concept，定位为假的具体原子 requirement。
+- 若是表达式 requirement，分别核对对象 cv、引用类别和参数顺序。
+- 若是返回约束，记住检查对象是 `decltype((expr))`，可能带引用。
+- 若两个候选歧义，比较是否复用了同一命名基础 Concept。
+- 若保护条件未生效，检查合取从左到右的实例化顺序。
+- 若错误是硬错误，判断是否发生在非模板语境或参数映射本身不合法。
+- 若标准 Concept 语法满足但算法出错，检查不可静态验证的代数语义。
+- 若修改 trait 后结果不一致，检查首次约束检查前定义和各翻译单元 ODR。
+- 将深层 requirement 提取成命名 Concept，通常能同时改善重用和诊断。
+
 ## 权威资料
 
 - [约束与 Concepts](https://eel.is/c++draft/temp.constr)

@@ -183,6 +183,19 @@ int main() {
 | `alignof(T)` | 返回类型所需对齐，单位为字节 |
 | `aligned_storage` | C++11 低层存储工具，仍需 placement 构造和显式析构 |
 
+## 核心工具专项审查
+
+- noexcept 声明是否与实际所有调用路径一致？
+- 条件 noexcept 是否包含成员交换/移动的真实表达式？
+- noexcept 函数内异常是否会意外 terminate？
+- 用户字面量后缀是否遵守保留命名规则？
+- raw/cooked 重载是否会产生歧义或错误解析？
+- thread_local 对象析构是否访问已销毁全局状态？
+- 动态加载库卸载与 TLS 析构顺序是否评估？
+- alignas 是否满足硬件/API 对齐而非只看 sizeof？
+- 手工对齐存储是否正确构造、launder 边界和析构？
+- 过度对齐对象的分配器是否实际支持所需对齐？
+
 ## 权威资料
 
 - [异常规格](https://eel.is/c++draft/except.spec)

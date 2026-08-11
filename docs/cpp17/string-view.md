@@ -134,6 +134,19 @@ int main() {
 | `copy` | 复制字符但不自动补零 |
 | `hash<string_view>` | 按内容哈希；长期键仍需稳定底层存储 |
 
+## String view 专项审查问题
+
+- 每个视图最终指向哪个拥有者，拥有者活多久？
+- 是否从临时 string 或局部按值形参返回视图？
+- 所有者 reserve/append/erase 后是否仍使用旧视图？
+- data() 是否错误传给要求零结尾的 C API？
+- 切片是否包含嵌入零并被下游正确按长度处理？
+- `npos + 1` 是否在未检查时发生无符号环绕？
+- 空视图是否仍调用 front/back 或解引用 begin？
+- 异步任务是否直接捕获调用者视图而未复制？
+- 哈希容器长期键的字符内容是否会变化？
+- UTF-8 size 是否被误解释成 Unicode 字符数量？
+
 ## 权威资料
 
 - [N3921：string_view](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3921.html)

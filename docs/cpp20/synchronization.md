@@ -149,6 +149,34 @@ latch/barrier 共享计数会形成缓存热点。把非常细粒度循环每次
 
 示例用信号量启动工作线程，主/工作线程在 barrier 汇合，再用 latch 通知工作完成。虽然为了教学同时展示三种原语，生产代码应使用最少且语义最贴合的一种。为所有等待设置外部超时监控，并测试参与者减少和提前取消。
 
+## 同步原语速查
+
+| 原语/接口 | 关键语义 |
+| --- | --- |
+| `latch(n)` | 一次性倒计数，归零后永久开放 |
+| `count_down(n)` | 减少计数但不等待，不得减过零 |
+| `arrive_and_wait` | 对 latch 减少后等待；对 barrier 到达当前阶段等待 |
+| `barrier(n,completion)` | 可重复阶段，每阶段完成一次 completion |
+| `arrive()` | 返回绑定当前阶段的移动 arrival_token |
+| `arrive_and_drop` | 到达当前阶段并永久减少未来参与数 |
+| `counting_semaphore<N>` | 维护许可数量，不维护线程所有权 |
+| `binary_semaphore` | 单许可用途，但仍不是带所有者的 mutex |
+| `release` | 累积许可并建立发布关系，不能超过最大值 |
+| `acquire` | 消耗许可；标准未提供自动归还 RAII 守卫 |
+
+## 同步原语专项审查问题
+
+- latch 初始计数是否对应任务数而非模糊的线程数？
+- 所有异常/提前返回路径是否仍 count_down/到达？
+- barrier 每阶段参与者是否恰好到达一次？
+- arrival_token 是否只用于其所属 barrier 和阶段？
+- 临时缺席是否错误使用 arrive_and_drop 永久退出？
+- completion 是否不抛、短小且不假定固定执行线程？
+- semaphore release 是否可能超过逻辑/实现最大许可？
+- acquire 后异常路径是否用 RAII 归还许可？
+- 许可对应的资源队列是否有独立正确并发协议？
+- 公平性和阶段最慢参与者的尾延迟是否实际测量？
+
 ## 权威资料
 
 - [P1135R6：同步库](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1135r6.html)

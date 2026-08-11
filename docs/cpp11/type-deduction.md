@@ -173,6 +173,19 @@ int main() {
 | `decltype(xvalue)` | 得到 `T&&` |
 | `decltype(expr)` | 未求值，不执行 expr 的运行期副作用 |
 
+## 类型推导专项审查
+
+- auto 是否丢失了 API 本应保留的引用或顶层 const？
+- `auto&&` 是转发引用还是非推导语境普通右值引用？
+- 花括号初始化是否具有可推导的 initializer_list 入口？
+- decltype 的未加括号名称特例是否符合预期？
+- 额外括号是否把返回/变量类型改变为引用？
+- 数组是否被 auto 按值退化成指针？
+- 代理类型是否被 auto 保存而非物化 value_type？
+- 未求值 decltype 中名称是否仍需可访问且语法合法？
+- 跨版本 auto 花括号细节是否在最低标准编译？
+- 是否用 static_assert 锁定关键推导结果？
+
 ## 权威资料
 
 - [自动类型推导与占位类型](https://eel.is/c++draft/dcl.spec.auto)

@@ -166,6 +166,19 @@ int main() {
 | `mem_fn` | 把成员指针适配为统一可调用对象 |
 | 类型萃取 | 多数暴露 `value`/`type`，C++14 才普及 `_t` 简写 |
 
+## 函数工具专项审查
+
+- tuple 索引是否在编译期范围内并与字段语义一致？
+- tie 返回引用是否越过被绑定对象寿命？
+- function 目标是否满足 C++11 可复制要求？
+- 空 function 是否可能被调用并抛 bad_function_call？
+- 类型擦除分配和虚调用成本是否位于热路径？
+- bind 默认按值保存参数是否符合生命周期/状态意图？
+- 需要引用时是否显式使用 ref/cref？
+- placeholder 顺序是否让公共调用签名难以理解？
+- 成员指针目标对象是否持续存活？
+- traits 的 `type`/`value` 错误是否处于正确 SFINAE 语境？
+
 ## 权威资料
 
 - [函数对象与调用包装](https://eel.is/c++draft/function.objects)

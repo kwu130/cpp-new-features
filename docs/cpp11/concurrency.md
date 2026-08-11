@@ -236,6 +236,32 @@ int main() {
 | `atomic<T>` | 对该对象操作无数据竞争，内存序决定跨对象发布 |
 | `call_once` | 成功完成一次初始化；抛异常时可由后续调用重试 |
 
+## C++11 并发专项审查
+
+- 每个 joinable thread 是否在所有异常路径 join/detach？
+- 数据不变量是否由同一 mutex 保护全部访问？
+- condition_variable 是否总用谓词循环处理虚假唤醒？
+- 通知前后的锁策略是否避免丢状态与无谓竞争？
+- promise 是否恰好满足一次并传播异常？
+- future::get 是否被重复调用或越过有效状态？
+- async 是否明确 launch policy 而非依赖实现选择？
+- 原子内存序是否有完整 happens-before 证明？
+- relaxed 原子是否被误用来发布非原子 payload？
+- 锁顺序、回调和 join 是否可能形成环形等待？
+
+## C++11 并发故障定位线索
+
+- 偶发永久等待：记录每把锁持有/请求顺序并构造等待图。
+- 条件变量偶发漏事件：检查状态是否在同一锁下更新并由谓词读取。
+- 程序退出 terminate：查找仍 joinable 的 thread 析构路径。
+- future 永久阻塞：检查对应 promise 是否在所有异常/退出路径满足。
+- async 没有并发：确认是否被选择 deferred policy 及何时调用 get。
+- 结果偶发陈旧：画出 release/acquire 或 mutex 的 happens-before 链。
+- 原子计数正确但 payload 错乱：relaxed 只保护计数，不自动发布旁边数据。
+- call_once 重复进入：初始化函数抛异常时状态不会标记成功。
+- 压测吞吐下降：检查锁粒度、伪共享、日志 I/O 与线程过量。
+- 难以复现竞态：在支持环境运行线程消毒器并保留最小压力测试。
+
 ## 权威资料
 
 - [线程支持库](https://eel.is/c++draft/thread)

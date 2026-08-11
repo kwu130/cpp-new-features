@@ -193,6 +193,19 @@ C++14 `get<T>(tuple)` 可按类型取得 tuple 元素，但要求该类型在 tu
 
 C++14 的 `_t` 类型别名只缩短 `typename trait<T>::type` 写法，不改变 SFINAE 发生位置。底层 `::type` 不存在时，究竟安静替换失败还是硬错误仍由使用语境决定。
 
+## C++14 库增强专项审查
+
+- 读写比例是否真能让 shared_timed_mutex 获益？
+- 定时锁晚于截止返回是否能被业务接受？
+- shared_lock 的底层 mutex 是否支持所用定时接口？
+- adopt_lock 前是否已经以共享模式拥有锁？
+- 是否错误假定读写锁公平？
+- exchange 的赋值异常是否会留下可接受状态？
+- exchange 是否被误当作原子同步操作？
+- 透明比较是否对查询类型与 key 双向一致？
+- quoted 是否被误当作完整 CSV/JSON 解析？
+- `_t` 别名错误是否位于期望的 SFINAE 语境？
+
 ## 权威资料
 
 - [N3659：共享互斥量](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3659.html)

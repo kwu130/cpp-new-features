@@ -119,6 +119,34 @@ C++20 chrono 还增加 `utc_clock`、`tai_clock`、`gps_clock`、`file_clock` �
 
 示例把闰年 2 月 28 日与 3 月 1 日转换为连续日，正确得到两天。测试应覆盖闰日、月末、DST 跳跃、重复时间、时区规则更新和目标环境缺少 tzdb 的降级路径。
 
+## 日历与时区速查
+
+| 类型/接口 | 关键语义 |
+| --- | --- |
+| `year_month_day` | 保存民用字段，可暂时表示无效组合 |
+| `ok()` | 检查字段/组合是否为有效日期 |
+| `sys_days` | system 时钟上的连续日表示 |
+| `local_days` | 未绑定具体时区偏移的当地日表示 |
+| `year_month_day_last` | 表达某年月最后一天规则 |
+| `weekday_indexed` | 表达某月第 n 个星期几 |
+| `locate_zone` | 按区域名查询时区数据库 |
+| `to_local(sys)` | 绝对时间到当地表示通常唯一 |
+| `to_sys(local)` | 可能遇到不存在或重复当地时间 |
+| `choose::earliest/latest` | 为重复/规定映射选择瞬间，需业务决策 |
+
+## Chrono 专项审查问题
+
+- 输入 year_month_day 是否在转换前调用 ok()？
+- “一个月后”与“经过固定天数”是否按业务区分？
+- 月末、闰日失效后采用夹取、滚动还是报错策略？
+- 保存的是绝对瞬间、当地字段、区域名还是三者组合？
+- DST 不存在/重复当地时间是否显式选择策略？
+- 时区数据库缺失、过旧或 reload 是否有可观测处理？
+- duration 序列化是否记录单位与 epoch？
+- 测耗时是否使用 steady_clock 而非可跳变 system_clock？
+- UTC、TAI、GPS 与 Unix 风格 sys_time 是否被准确区分？
+- 目标标准库是否真实支持所用 tzdb/format 功能？
+
 ## 权威资料
 
 - [P0355R7：日历与时区](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0355r7.html)
