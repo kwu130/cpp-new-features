@@ -34,6 +34,18 @@ int main() {
 
 共享锁只允许逻辑只读操作。如果所谓“读”会更新缓存、统计或延迟初始化状态，它仍可能需要独占锁或独立原子同步。返回受保护对象的引用后立即释放锁，也会把数据竞争推给调用者。
 
+同一线程不能默认对 shared_timed_mutex 递归加锁，无论共享还是独占组合。标准没有递归共享互斥量；再次请求可能死锁或违反前置条件。把锁所有权集中在外层，内部 helper 接收“已持锁”状态而不重复获取。
+
+共享所有权允许不同线程各持一个 shared_lock，但任何独占请求必须等所有读者释放。反过来独占持有期间读者和其他写者都不能进入。互斥量对象本身必须比所有锁包装器活得久。
+
+### `shared_lock` 所有权接口
+
+shared_lock 类似 unique_lock 的共享模式 RAII 包装：支持默认/延迟/尝试/定时/采用锁构造、移动所有权、`owns_lock()`、`operator bool`、`lock/try_lock/unlock`、`release` 和 `swap`。它不可复制。
+
+`release()` 只放弃包装器与 mutex 的关联，不调用 unlock_shared；调用者必须接管解锁责任。它不是普通提前解锁。需要提前释放通常直接 `unlock()`，保留对象但状态变为不拥有。
+
+adopt_lock 要求当前线程已以共享模式持锁，否则前置条件被破坏。defer_lock 只关联不获取，适合稍后协调；try_to_lock 立即尝试并可通过 owns_lock 检查。
+
 ### 锁接口与 RAII 包装
 
 独占模式提供 `lock()`、`try_lock()`、`try_lock_for()`、`try_lock_until()` 和 `unlock()`；共享模式对应 `lock_shared()`、`try_lock_shared()`、`try_lock_shared_for()`、`try_lock_shared_until()` 和 `unlock_shared()`。实际代码应优先让 `unique_lock` 或 `shared_lock` 管理解锁，避免异常和提前返回破坏配对。
@@ -41,6 +53,12 @@ int main() {
 定时接口的失败只表示在给定等待条件内没有获得锁，不说明持锁线程已经发生故障。`try_lock_for` 接受相对时长，可能因为调度或系统时钟粒度等待得比请求更久；`try_lock_until` 接受绝对时间点。超时路径必须由业务显式定义，例如返回旧快照、重试、取消请求或报告繁忙。
 
 标准不提供从共享所有权直接原子升级为独占所有权的操作。先释放共享锁再获取独占锁会留下竞争窗口，期间状态可能改变，因此写入前必须重新检查前置条件。反向“降级”也不应假定能无缝完成。
+
+`try_lock_for(duration)` 使用相对等待，`try_lock_until(time_point)` 使用绝对截止时间；共享版本在名称中带 `_shared`。允许虚假失败的具体接口语义要按标准读取，即便未到超时也不应把失败解释为锁永久不可用。
+
+steady_clock 截止更适合相对业务超时，system_clock 可能因系统校时跳变。实现可将时钟转换到内部等待原语，实际返回会受调度延迟影响，超时是“不早于/尽力”边界而非实时保证。
+
+超时后绝不能访问受保护数据。常见 API 返回 optional 快照、错误码或 bool，让调用者决定重试/降级。把超时当作获得了“弱一致读”会直接造成数据竞争。
 
 ### 内存同步而非只保护语句块
 
@@ -55,6 +73,12 @@ int main() {
 该工具常用于移动构造：目标取得源句柄，同时把源句柄设为空值；也适合状态机返回前一状态。它要求旧值可移动构造且新值可赋值，异常保证取决于这两个操作。
 
 可以把它理解为如下三个有顺序的步骤：先从 `object` 构造旧值临时量，再执行 `object = new_value`，最后返回旧值。第一步成功、第二步抛出时，对象是否改变取决于赋值运算自身的异常保证；`exchange` 不额外提供事务回滚。返回类型是被替换对象的类型，而新值可以是能赋给它的不同类型。
+
+概念签名让第二参数类型 U 默认等于 T，并以 U&& 接收，因此可写 `exchange(flag, false)`、`exchange(string, "new")`。新值经 forward 赋给 object，旧值经 move 构造返回。
+
+它要求 T 可移动构造、T& 可由 U 赋值。对只能复制的旧类型，move 表达式仍可能落到复制构造；性能取决于 T。noexcept 性质由构造和赋值是否抛出决定，标准函数不会强行承诺不抛。
+
+`exchange(x, x)` 或让 new_value 引用 object/其子对象时会出现别名与求值语义，先保存旧值后再赋值仍可能从已移动 object 读取。避免自别名，或先在外部构造独立新值。
 
 <!-- example id="cpp14-exchange-move-state" std="c++14" file="main.cpp" kind="single" compilers="all" output="moved=7, source=-1" -->
 ```cpp
@@ -103,6 +127,40 @@ int main() {
 若所有访问都需要写入，或临界区非常短，`mutex` 往往更简单且更快。只有读操作可真正并行、写入相对稀少、读取工作量足以摊薄内部计数成本时，才值得基准测试 `shared_timed_mutex`。若完全不需要超时，而工具链支持后续标准，可考虑 C++17 的 `shared_mutex`，它不承诺定时接口，允许实现针对这一较小接口优化。
 
 无论选择哪种锁，都应把受保护数据和互斥量封装在同一抽象内。调用者不应拿到脱离锁生命周期的引用、指针或迭代器。需要长时间消费数据时，常见策略是在锁内复制快照，随后在锁外处理。
+
+## 透明比较器与异构查找
+
+C++14 标准关联容器支持在比较器透明时用不同于 key_type 的查询类型执行 find/lower_bound 等操作。`std::less<>`（即 `less<void>`）会转发实际参数类型，并声明透明能力，避免为查询临时构造完整键。
+
+<!-- example id="cpp14-heterogeneous-lookup" std="c++14" file="main.cpp" kind="single" compilers="all" output="answer=42" -->
+```cpp
+#include <iostream>
+#include <map>
+#include <string>
+
+int main() {
+    const std::map<std::string, int, std::less<>> values{{"answer", 42}};
+    const auto iterator = values.find("answer");
+    if (iterator == values.end()) {
+        return 1;
+    }
+    std::cout << iterator->first << '=' << iterator->second << '\n';
+}
+```
+
+查询参数是字符数组退化的 const char*，比较器能直接与 string 做关系比较，因此无需在调用点显式创建 string。是否真正零分配还取决于比较运算实现；自定义键应为两个方向提供一致严格弱序。
+
+C++20 才加入 contains，C++14 使用 find。无序容器的通用异构查找属于后续演进，不能从有序容器规则类推。
+
+## `quoted` 与类型萃取补充
+
+`std::quoted`（`<iomanip>`）为流式字符串输入输出处理引号和转义字符。输出可选择分隔符/转义符，输入能恢复含空格文本。它仍受流 locale/状态影响，不是 JSON 或通用协议编码器。
+
+C++14 `get<T>(tuple)` 可按类型取得 tuple 元素，但要求该类型在 tuple 中恰好出现一次；重复类型应继续按索引 get。它让语义唯一的异构记录少依赖位置，却不提供运行期按类型搜索。
+
+类型萃取增加 `is_final`、`is_null_pointer` 等能力，并提供常用 `_t` 别名如 `remove_reference_t`、`enable_if_t`，减少 typename/type 样板。`_v` 变量模板便利形式到 C++17 才标准化。
+
+这些增强看似零散，但都应按接口边界使用：quoted 解决流 token 转义，透明比较解决查找构造，萃取别名解决模板拼写；不要把它们堆进业务代码而不说明语义。
 
 ## 示例解析与工程权衡
 

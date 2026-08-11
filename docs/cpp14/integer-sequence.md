@@ -36,11 +36,54 @@ int main() {
 
 它解决了“参数包没有内建下标”的问题：先生成索引包，再把每个索引放入 `get<I>` 等需要编译期常量的位置。序列对象本身通常是空对象，优化后没有运行时成本。
 
+概念接口包含：`using value_type = T;`、静态 `size()`，以及模板参数包本身。序列没有 operator[]、迭代器或运行期 data，因为值只存在于类型参数列表中。要在函数体取得每个值，必须通过模板包展开。
+
+`make_integer_sequence<T, N>` 只接受合适的整数类型 T 和可表示的非负 N，结果为 `integer_sequence<T, 0, 1, ..., N-1>`。`make_index_sequence<N>` 是 size_t 版本，`index_sequence_for<Ts...>` 等于按 `sizeof...(Ts)` 生成。
+
+序列对象作为函数参数是一种标签分派：类型携带全部信息，对象通常空。也可直接在类模板偏特化中匹配 integer_sequence，不必创建对象。
+
 ## 展开过程
 
 示例中二元素元组让 `Indexes...` 成为 `0, 1`。初始化列表里的模式会生成两条输出表达式。C++11/14 初始化列表保证元素从左到右求值，因此常被用来实现带副作用的有序包展开；前置的 `0` 让空包时数组仍合法。
 
 这种技巧可读性有限，C++17 折叠表达式能直接表达逗号折叠。但索引序列本身仍广泛用于元组转换、结构化序列化和调用适配。
+
+包展开模式中每次出现 Indexes 都被替换成相应值。若模式同时引用另一个参数包，参与同一次展开的包长度必须兼容。索引序列常用来把“类型包长度”转换为“可放进表达式的非类型包”。
+
+初始化列表技巧利用元素求值顺序，并把每个有副作用表达式转换为 int 元素。`(expr, 0)` 确保无论 expr 返回什么，数组元素类型一致。前置 0 处理空包，避免零长度原生数组。
+
+C++17 用逗号折叠可简化有序副作用，但 get<I> 仍需要 I 包；integer_sequence 并没有被折叠表达式取代。C++20 模板 Lambda进一步能在局部命名索引包，底层模式依旧相同。
+
+### 自定义顺序和选取
+
+integer_sequence 不要求值连续或排序，可以直接写 index_sequence<2,0> 选择第三、第一元素。make 系列只是常用连续生成器。
+
+<!-- example id="cpp14-index-sequence-select" std="c++14" file="main.cpp" kind="single" compilers="all" output="third first" -->
+```cpp
+#include <cstddef>
+#include <iostream>
+#include <string>
+#include <tuple>
+#include <utility>
+
+template <typename Tuple, std::size_t... Indexes>
+void print_selected(const Tuple& values, std::index_sequence<Indexes...>) {
+    using expand = int[];
+    bool first = true;
+    (void)expand{0, ((std::cout << (first ? "" : " ")
+                               << std::get<Indexes>(values),
+                      first = false), 0)...};
+    std::cout << '\n';
+}
+
+int main() {
+    const auto words = std::make_tuple(
+        std::string("first"), std::string("second"), std::string("third"));
+    print_selected(words, std::index_sequence<2, 0>{});
+}
+```
+
+调用者显式给出 2、0，因此输出重新排列且省略中间元素。公共 API 通常不让业务调用者手写序列，而由字段映射、编译期表或包装函数生成这种选择。
 
 ## 用索引序列解包元组
 
@@ -117,9 +160,29 @@ int main() {
 
 索引越界会在 `get<I>` 实例化处产生长错误。公共包装函数应先用 `static_assert` 验证数量关系，并把复杂实现放入 `detail` 层，让调用者看到更直接的诊断。
 
+概念上的线性递归生成器从 N 递减到 0，每层继承/别名追加一个值，模板深度与 N 成正比。分治实现把序列对半合并，可把递归深度降到对数级；编译器内建还能直接生成包。
+
+标准只要求最终类型，不规定生成器的实例化策略。不同标准库/编译器对巨大 N 的编译时间差异明显，库代码不应把百万规模运行期循环展开成模板索引。
+
+每个展开元素可能实例化函数、表达式和诊断路径。即使生成序列很快，后续 N 次 get/调用也是真实前端工作，并可能生成大段直线机器码。
+
+### 错误边界
+
+`tuple_size<decay_t<Tuple>>` 不存在、索引越界或函数不可调用时，错误常出现在 impl 的 decltype 展开。入口可先断言 tuple-like、长度和映射范围；但 C++14 没有 Concepts，检测代码本身也要谨慎 SFINAE。
+
+自定义序列含重复索引是合法的，可能对同一元素操作多次；含降序也合法。算法若要求排列或唯一性，integer_sequence 类型不会自动证明，需额外 constexpr 检查。
+
+对右值 tuple 重复选同一只移动元素会尝试移动多次。转发适配器应把“是否允许重复索引”写入契约，而不是只看类型可编译。
+
 ## 工程实践
 
 只在确需把类型包映射到位置时使用索引序列；能直接按类型展开就不要引入索引。对外接口隐藏辅助序列参数，并测试空元组、单元素和多元素边界。
+
+典型用途包括 tuple apply、成员逐字段访问、构造固定数组、生成查表项、按索引 zip 多个 tuple，以及从参数包建立 base class 集合。若数据同质且长度运行期变化，普通循环/容器更合适。
+
+实现函数命名 `_impl`/放 detail 命名空间，外层只接收自然参数并自动生成序列。这既防止调用者传错长度，也让未来替换为 std::apply 等新设施时保持 API。
+
+测试不仅看结果，还要覆盖值类别：左值 tuple 不应意外移动，const tuple 不应获得可写引用，右值 tuple 应能把只移动元素转发给消费函数。
 
 ## 权威资料
 

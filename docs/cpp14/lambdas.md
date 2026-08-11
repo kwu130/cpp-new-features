@@ -26,6 +26,43 @@ C++11 Lambda 的参数类型固定，想对不同数值类型复用逻辑需要�
 
 多个 `auto` 参数彼此独立推导；若业务要求两者类型相同，C++14 只能在函数体中用 `static_assert` 检查，C++20 才能更自然地写 Concepts 约束。泛型 Lambda 同样参与模板实例化，错误信息、代码膨胀和隐式转换规则都应按模板代码理解。
 
+参数中的 `auto` 可以配合 `const`、引用和转发引用规则：`const auto&` 接受任意只读对象而不复制，`auto&` 只接收左值，`auto&&` 在泛型 Lambda 中会按实参值类别推导，具有与函数模板转发引用相同的折叠行为。
+
+<!-- example id="cpp14-generic-lambda-forwarding" std="c++14" file="main.cpp" kind="single" compilers="all" output="lvalue rvalue" -->
+```cpp
+#include <iostream>
+#include <string>
+#include <utility>
+
+struct Category {
+    const char* operator()(const std::string&) const { return "lvalue"; }
+    const char* operator()(std::string&&) const { return "rvalue"; }
+};
+
+int main() {
+    const auto invoke = [](auto&& function, auto&& argument) -> decltype(auto) {
+        return std::forward<decltype(function)>(function)(
+            std::forward<decltype(argument)>(argument));
+    };
+
+    std::string text = "cpp14";
+    std::cout << invoke(Category{}, text) << ' '
+              << invoke(Category{}, std::move(text)) << '\n';
+}
+```
+
+`decltype(argument)` 分别是 `string&` 和 `string&&`，把它交给 `forward` 才能保留调用方值类别。如果 Lambda 体直接写 `function(argument)`，具名参数表达式始终是左值，第二次也会选择左值重载。
+
+尾置 `decltype(auto)` 让被调函数的返回引用性质保持不变。若适配层希望返回拥有值，应改用普通 `auto` 或显式类型，避免无意把内部对象引用泄漏出去。
+
+### 返回类型与 SFINAE 边界
+
+未写尾置返回类型的泛型 Lambda 由函数体推导返回类型。某个实例中返回表达式不合法时，诊断可能发生在调用运算符实例化内部，而不总能像显式尾置 `decltype(expression)` 那样平滑参与 SFINAE。
+
+C++14 的泛型适配器如果要进入复杂重载集，常把合法性表达式放进尾置返回类型，或提升为命名函数对象模板。Lambda 无法在 C++20 之前直接写模板参数列表和 requires-clause，声明层约束能力有限。
+
+无捕获泛型 Lambda 不是一个单一普通函数，因此不能像固定签名无捕获 Lambda 那样直接无歧义转换成任意函数指针。转换涉及目标签名对应的调用运算符实例，工具链与上下文必须能确定具体类型。
+
 ## 初始化捕获的对象模型
 
 `[name = expression]` 在闭包对象中创建一个由表达式初始化的成员，其类型由 `auto` 规则推导。外围作用域不需要存在同名变量。示例中的 `owned = std::move(value)` 把 `unique_ptr` 移入闭包，原指针随后为空。
@@ -34,9 +71,27 @@ C++11 Lambda 的参数类型固定，想对不同数值类型复用逻辑需要�
 
 初始化捕获还可用于规范化类型、预计算值或只捕获对象的某个成员，而不是整个 `this`。但表达式只在创建闭包时求值一次，不能把它误解成每次调用重新计算。
 
+初始化捕获采用类似 `auto` 的推导，因此 `[x = array]` 通常发生数组到指针退化，[`x = std::ref(object)`] 保存 reference_wrapper，而 `[&x = object]` 明确建立引用捕获。要保留数组值应包装进 `std::array` 或命名结构体。
+
+捕获成员的声明顺序和名称是未公开的闭包实现细节，不能通过布局假设序列化 Lambda。不同 Lambda 表达式产生不同闭包类型；捕获列表相同也不让二者可赋值。
+
+初始化表达式按闭包构造发生并可能抛异常。若前面捕获已构造、后续捕获失败，已构造成员按正常对象规则销毁。复杂资源组合更适合先在外部形成一个完整 RAII 状态对象，再一次移动捕获。
+
+### 移动捕获后的调用协议
+
+移动捕获只保证闭包构造获得资源，不保证调用运算符只执行一次。若 Lambda 从捕获成员中再次 move，第一次后成员进入有效但未指定/空状态；第二次调用必须有定义策略，例如返回空、抛错或由接口禁止。
+
+标准算法和任务框架可能复制函数对象。只移动闭包不能进入要求 CopyConstructible 的接口；把资源改成 shared_ptr 虽能满足复制，却改变独占语义。更好的办法常是选择支持 move-only callable 的队列或给任务定义命名所有权类型。
+
 ## 生命周期与并发
 
 按引用初始化捕获仍不拥有对象；例如 `[&alias = object]` 只是闭包中的引用语义。异步执行前必须保证对象生命周期覆盖任务。按值捕获可减少悬空风险，但闭包副本之间各有状态；若多个副本需要共享同步状态，应显式捕获共享对象并设计线程安全。
+
+按值捕获指针仍只是复制地址，不拥有所指对象；捕获 `this` 同理。C++14 尚不能写 `[*this]`，若需要对象快照可在初始化捕获中显式复制某个对象或值状态，并警惕多态切片。
+
+闭包的 `operator()` 默认 const，使普通按值成员不能修改；`mutable` 去掉该 const 限制，但不提供互斥。多个线程同时调用同一个 mutable 闭包并修改捕获成员会数据竞争。复制闭包可得到独立状态，但捕获的 shared_ptr 指向对象仍共享。
+
+引用捕获局部变量后把闭包返回，是典型悬空错误。泛型 Lambda 的模板化不会延长任何寿命；编译器通常也无法从类型上区分安全全局引用与已离开作用域的栈引用。
 
 ## 示例解析与实践
 
@@ -69,6 +124,14 @@ int main() {
 移动捕获只发生在闭包构造时。闭包的调用运算符默认 `const`，若要从捕获的 `unique_ptr` 再次转移所有权，需要 `mutable`。这种回调往往只能成功消费一次，接口必须说明重复调用后的行为。
 
 异步 API 如果复制回调，会拒绝只移动闭包或改变消费语义。C++14 项目常让任务队列自身支持移动任务，而不是强制套进可复制的 `std::function`。
+
+## 实例化和代码尺寸
+
+每个不同参数类型组合会实例化一个调用运算符。`combine(int,int)`、`combine(long,long)`、`combine(string,string)` 都可能生成独立代码，即使源 Lambda 只有一处。优化器可合并等价机器码，但标准不保证。
+
+在公共头文件中放置被大量类型调用的复杂泛型 Lambda，会把编译成本扩散到每个翻译单元。把重逻辑委托给少量非模板函数、让 Lambda 只做类型适配，可以兼顾局部表达力和构建规模。
+
+错误诊断会显示匿名闭包类型，给 Lambda 变量取清晰名称并把内部关键操作拆成命名函数，能让错误栈更易读。若它已经拥有多段分派、状态机和复杂约束，命名函数对象通常比继续增长 Lambda 更合适。
 
 ## 权威资料
 
