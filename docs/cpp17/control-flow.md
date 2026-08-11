@@ -156,6 +156,21 @@ discarded statement 中的 return 不参与当前实例的 auto 返回类型推�
 
 在嵌套泛型 Lambda 等尚未对封闭模板参数完成实例化的语境，条件可能仍依赖，分支检查会推迟。诊断位置由依赖关系决定，不保证所有错误都在外层 if constexpr 处消失。
 
+## 三项能力速查
+
+| 能力 | 关键边界 |
+| --- | --- |
+| `auto [a,b] = obj` | 创建隐藏对象并让名称绑定其子对象 |
+| `auto& [a,b] = obj` | 绑定原对象，可经非 const 名称修改 |
+| `const auto& [a,b]` | 只读绑定，可延长合适临时的生命周期 |
+| 数组协议 | 按数组元素顺序绑定 |
+| tuple-like 协议 | 依赖 tuple_size、tuple_element 与 get 一致 |
+| 成员协议 | 在满足条件时按可访问成员声明顺序绑定 |
+| `if (init; cond)` | init 名称作用域覆盖条件及两个分支 |
+| `switch (init; cond)` | init 对象在整个 switch 结束后析构 |
+| `if constexpr` | 丢弃分支仍必须通过非依赖语法检查 |
+| 模板返回推导 | 丢弃 return 不参与当前特化返回类型推导 |
+
 ## 权威资料
 
 - [P0217R3：结构化绑定规范措辞](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0217r3.html)

@@ -165,6 +165,21 @@ uses-allocator 构造只对声明支持相应分配器协议的元素传播。`p
 
 先用分析工具确认分配是瓶颈，再选择资源；记录资源所有者和销毁顺序；测试缓冲区耗尽路径；不要把 PMR 当作通用“更快容器”，它优化的是特定生命周期和分配模式。
 
+## 资源类型速查
+
+| 设施 | 关键语义 |
+| --- | --- |
+| `memory_resource` | 字节分配/释放的运行期多态基类 |
+| `polymorphic_allocator<T>` | 保存资源指针并适配 allocator 协议 |
+| `new_delete_resource()` | 以全局 new/delete 语义作为资源 |
+| `null_memory_resource()` | 分配总是抛 bad_alloc，用于硬上限 |
+| `monotonic_buffer_resource` | 单次释放不回收，release/析构批量回收 |
+| `unsynchronized_pool_resource` | 无内部线程安全的小块复用池 |
+| `synchronized_pool_resource` | 支持并发访问但增加同步成本 |
+| `pool_options` | 调整块类别参数，具体策略仍实现定义 |
+| `is_equal` | 判断跨资源释放兼容性，不是配置文本相同 |
+| 默认资源 | 只影响随后默认构造的多态分配器 |
+
 ## 权威资料
 
 - [P0220R1：多态内存资源](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0220r1.html)

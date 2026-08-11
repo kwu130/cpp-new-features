@@ -132,6 +132,21 @@ C++17 `shared_mutex` 提供共享和独占模式但不要求定时接口，相�
 
 示例用一个 `scoped_lock` 原子地维护左右两个值的不变量，再持共享锁读取。实际代码应为数据不变量选择最少数量的锁、记录统一锁顺序、避免返回锁保护数据的裸引用，并通过压力测试和线程消毒器验证，而不是只靠代码看起来有锁。
 
+## 锁接口速查
+
+| 设施 | 关键语义 |
+| --- | --- |
+| `scoped_lock(m)` | 单锁词法 RAII，类似简化 lock_guard |
+| `scoped_lock(m1,m2,...)` | 用死锁避免算法取得全部锁 |
+| 零参数 scoped_lock | 合法无操作守卫，便利泛型代码 |
+| `adopt_lock` 构造 | 要求调用方已经拥有全部锁 |
+| `shared_mutex::lock` | 取得独占写锁 |
+| `lock_shared` | 取得共享读锁 |
+| `shared_lock` | 共享 RAII 所有者，可移动不可复制 |
+| `unique_lock<shared_mutex>` | 独占 RAII 所有者 |
+| 升级共享到独占 | 标准无原子升级，释放后需重新检查 |
+| 公平性 | 未规定，读者或写者可能饥饿 |
+
 ## 权威资料
 
 - [P0156R2：scoped_lock](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0156r2.html)

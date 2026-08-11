@@ -142,6 +142,21 @@ int main() {
 
 跨共享库或插件边界传递 `any` 还需要考虑 RTTI、标准库 ABI 和分配器边界。稳定协议通常应使用显式标签加稳定数据格式，而不是直接暴露 `any` 的进程内表示。
 
+## 三种词汇类型对照
+
+| 需求/接口 | `optional` | `variant` | `any` |
+| --- | --- | --- | --- |
+| 状态集合 | 空或一个 T | 编译期封闭 Ts 集合 | 运行期开放可复制类型 |
+| 空状态 | `nullopt` | 可用 monostate 建模 | 默认构造/`reset` |
+| 查询 | `has_value` | `index`/`holds_alternative` | `has_value`/`type` |
+| 安全探测 | 布尔判断 | `get_if` | 指针版 `any_cast` |
+| 错误访问 | `value` 抛 bad_optional_access | `get` 抛 bad_variant_access | 值版 any_cast 抛 bad_any_cast |
+| 原位构造 | `emplace` | `emplace<I/T>` | `emplace<T>` |
+| 存储模型 | 通常内联 T + 状态 | 最大备选内联存储 + 索引 | 小对象优化或堆由实现决定 |
+| 穷尽处理 | 单一值分支 | `visit` 可编译期覆盖备选 | 调用方运行期约定类型 |
+| 无值异常态 | 空 optional | `valueless_by_exception` | 构造失败后可能为空 |
+| 选择原则 | 正常缺失 | 有限代数数据类型 | 真正开放扩展边界 |
+
 ## 权威资料
 
 - [P0088R3：variant](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0088r3.html)

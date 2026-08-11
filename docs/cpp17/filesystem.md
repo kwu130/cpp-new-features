@@ -107,6 +107,21 @@ int main() {
 
 示例只做纯词法组合，所以不依赖当前目录是否存在。实际工程应明确相对路径基准、符号链接策略、错误恢复、遍历顺序和信任边界，再执行读写。
 
+## 路径与状态接口速查
+
+| 接口 | 是否访问文件系统/边界 |
+| --- | --- |
+| `lexically_normal` | 否，只按路径语法规范化 |
+| `absolute` | 形成绝对形式，不保证对象存在 |
+| `canonical` | 是，要求路径存在并解析链接 |
+| `weakly_canonical` | 是，允许尾部部分不存在 |
+| `status` | 跟随符号链接观察目标 |
+| `symlink_status` | 观察链接本身 |
+| `directory_iterator` | 单层、顺序未指定 |
+| `recursive_directory_iterator` | 递归且需明确链接/权限策略 |
+| `remove_all` | 递归高风险操作，先验证精确目标 |
+| `equivalent` | 访问文件系统判断两个现有路径实体等价 |
+
 ## 权威资料
 
 - [P0218R1：Filesystem](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0218r1.html)

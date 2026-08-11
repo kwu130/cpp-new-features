@@ -113,6 +113,21 @@ C++17 的 `invoke` 返回类型写作 `invoke_result_t` 所描述的类型，`vo
 
 示例先由 `apply` 展开二元素元组，Lambda 内再用 `invoke` 调用成员函数指针。真实代码若只调用一个已知成员，直接语法更清楚；这些工具应集中用于任务调度器、反射式字段适配、元组反序列化等真正需要统一调用协议的层。
 
+## 调用协议速查
+
+| 设施 | 关键语义 |
+| --- | --- |
+| `invoke(f,args...)` | 调普通函数、函数对象和 Lambda |
+| 成员函数指针 | 首个对象实参可为对象、reference_wrapper 或指针式对象 |
+| 成员数据指针 | 返回成员访问表达式并保留引用类别 |
+| `invoke_result_t` | 在未求值语境得到 INVOKE 结果类型 |
+| `is_invocable_v` | 检查表达式形成，不验证运行期前置条件 |
+| `is_invocable_r_v<R>` | 检查结果可转换为 R，不要求精确相同 |
+| `is_nothrow_invocable_v` | 检查调用表达式 noexcept 性质 |
+| `apply(f,tuple)` | 用 get<I> 展开固定 tuple-like 参数 |
+| 右值 tuple | 元素值类别可转发为右值 |
+| `make_from_tuple<T>` | 展开元素直接构造 T |
+
 ## 权威资料
 
 - [P0209R2：invoke](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0209r2.html)

@@ -123,6 +123,21 @@ C++17 尚未提供关联容器的 `contains`；只检查存在性时使用 `find
 
 示例提取节点、修改映射值、转移到另一个 map，再明确覆盖。工程中节点句柄适合改键、容器合并和避免昂贵对象搬迁；普通插入仍优先使用更简单接口。每次都检查重复键和分配器契约。
 
+## 关联容器增强速查
+
+| 接口 | 冲突/所有权语义 |
+| --- | --- |
+| `extract(iterator)` | 解除一个节点，返回移动专用句柄 |
+| `extract(key)` | 先查找再提取，未找到返回空句柄 |
+| `node.empty()` | 判断句柄是否拥有节点 |
+| map `node.key()` | 节点离开容器后可安全改键 |
+| map `node.mapped()` | 访问映射值 |
+| `insert(node)` | 成功转移所有权；唯一键冲突会返还节点 |
+| `merge(source)` | 尽量转移，唯一键冲突项留在 source |
+| `try_emplace` | 仅缺键时构造 mapped value |
+| `insert_or_assign` | 缺键插入，已有键对 mapped value 赋值 |
+| 分配器兼容 | 不兼容节点转移不是自动深拷贝 |
+
 ## 权威资料
 
 - [P0083R3：节点句柄](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0083r3.pdf)

@@ -119,6 +119,21 @@ int main() {
 
 示例的配置字符串在视图使用期间一直存活，`substr` 只创建后半段窗口。审查时画出每个视图指向的所有者，检查所有可能重分配操作，确认下游 API 是否接受长度，并避免用视图跨异步边界携带临时数据。
 
+## 观察接口速查
+
+| 接口 | 复杂度/边界 |
+| --- | --- |
+| `data()` | 返回首字符指针，不保证切片末尾有零字符 |
+| `size()/length()` | O(1) 元素数，不是 Unicode 字符数 |
+| `operator[]` | 不检查边界 |
+| `at()` | 越界抛 out_of_range |
+| `substr(pos,n)` | O(1) 新视图，仍依赖同一所有者 |
+| `remove_prefix(n)` | O(1) 移动窗口起点，需满足前置条件 |
+| `remove_suffix(n)` | O(1) 缩短窗口，需满足前置条件 |
+| `find` | 未找到返回 npos，先判断再做加法 |
+| `copy` | 复制字符但不自动补零 |
+| `hash<string_view>` | 按内容哈希；长期键仍需稳定底层存储 |
+
 ## 权威资料
 
 - [N3921：string_view](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3921.html)
