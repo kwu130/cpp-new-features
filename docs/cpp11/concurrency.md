@@ -219,6 +219,23 @@ int main() {
 
 避免用加入日志“修复”竞态，I/O 内部锁会改变时序掩盖问题。最小复现应保留同步结构，并在优化构建与多核心环境运行。
 
+## 并发接口速查
+
+| 设施 | 关键契约 |
+| --- | --- |
+| `thread` | joinable 对象析构会 terminate，必须 join/detach |
+| `mutex` | 非递归独占锁，使用 RAII 守卫管理 |
+| `lock_guard` | 简单词法持锁，不支持提前解锁 |
+| `unique_lock` | 可延迟、移动、解锁，供 condition_variable 使用 |
+| `condition_variable` | 通知不保存业务状态，必须配谓词循环 |
+| `promise<T>` | 单次写入共享状态，重复满足会报错 |
+| `future<T>` | 移动专用结果句柄，get 通常只能调用一次 |
+| `shared_future<T>` | 可复制并由多观察者读取同一完成状态 |
+| `async` | launch policy 决定异步线程或延迟执行 |
+| `packaged_task` | 把可调用结果连接到 future 共享状态 |
+| `atomic<T>` | 对该对象操作无数据竞争，内存序决定跨对象发布 |
+| `call_once` | 成功完成一次初始化；抛异常时可由后续调用重试 |
+
 ## 权威资料
 
 - [线程支持库](https://eel.is/c++draft/thread)

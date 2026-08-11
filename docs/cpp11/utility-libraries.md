@@ -167,6 +167,23 @@ int main() {
 }
 ```
 
+## 实用库接口速查
+
+| 设施 | 关键语义 |
+| --- | --- |
+| `duration<Rep,Period>` | 数值与单位都进入类型，转换可能有精度限制 |
+| `time_point<Clock,D>` | 某时钟 epoch 上的 duration，不同 Clock 不可随意混用 |
+| `system_clock` | 可映射民用时间但可能跳变 |
+| `steady_clock` | 单调，适合测耗时，不适合持久化 epoch |
+| `duration_cast` | 显式单位转换并按 Rep 规则舍入/截断 |
+| 随机引擎 | 维护确定性状态，给定种子可复现序列 |
+| `random_device` | 熵质量和是否确定性由实现/平台决定 |
+| 分布对象 | 把引擎位映射到目标统计分布 |
+| `regex` | 表达式编译可能抛 `regex_error` |
+| `regex_match` | 要求整个序列匹配 |
+| `regex_search` | 查找任意匹配子序列 |
+| `smatch` | 保存指向原字符串的匹配范围，原数据需存活 |
+
 ## 权威资料
 
 - [时间工具](https://eel.is/c++draft/time)

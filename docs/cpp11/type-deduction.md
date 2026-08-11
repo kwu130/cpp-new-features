@@ -158,6 +158,21 @@ int main() {
 
 局部变量由初始化表达式自然决定且不关心精确引用属性时使用 `auto`。需要复制表达式的声明类型、编写尾置返回类型或验证值类别时使用 `decltype`。若接口必须稳定，显式业务类型通常比两者都更容易审查。
 
+## 推导规则速查
+
+| 写法 | 结果/边界 |
+| --- | --- |
+| `auto x = expr` | 类似按值模板推导，通常丢顶层 const 和引用 |
+| `auto& x = expr` | 必须绑定左值并保留底层 cv |
+| `const auto& x = expr` | 可绑定临时并把其寿命延长到引用作用域 |
+| `auto&& x = expr` | 变量声明中按转发引用规则折叠 |
+| `auto x{1}` | C++11 与初始化列表推导规则相关，跨版本需测试 |
+| `decltype(name)` | 未加括号 id-expression 取实体声明类型 |
+| `decltype((name))` | 按表达式值类别，左值通常得到 `T&` |
+| `decltype(prvalue)` | 得到非引用 T |
+| `decltype(xvalue)` | 得到 `T&&` |
+| `decltype(expr)` | 未求值，不执行 expr 的运行期副作用 |
+
 ## 权威资料
 
 - [自动类型推导与占位类型](https://eel.is/c++draft/dcl.spec.auto)
