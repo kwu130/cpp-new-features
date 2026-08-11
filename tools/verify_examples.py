@@ -15,7 +15,7 @@ from pathlib import Path
 
 META_RE = re.compile(r'^\s*<!--\s*example\s+(.+?)\s*-->\s*$')
 FENCE_RE = re.compile(r'^\s*```(\S*)\s*$')
-LINK_RE = re.compile(r'(?<!!)\[[^\]]+\]\(([^)]+)\)')
+LINK_RE = re.compile(r'(?<!!)(?<!`)\[[^\]]+\]\(([^)]+)\)')
 VALID_STANDARDS = {"c++11", "c++14", "c++17", "c++20"}
 
 
