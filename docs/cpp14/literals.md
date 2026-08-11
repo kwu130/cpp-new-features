@@ -36,6 +36,34 @@ int main() {
 
 示例中的两个字面量在编译后分别就是整数 165 与 1000000；其价值完全在源代码可读性和审查准确度。
 
+## 位字段的可读分组
+
+二进制字面量可以按协议字段而不是固定四位分组。数字分隔符不改变值，因此可以用分组直接展示版本位、权限位和标志位的边界。配合无符号类型可避免符号扩展影响右移。
+
+<!-- example id="cpp14-binary-bit-fields" std="c++14" file="main.cpp" kind="single" compilers="all" output="read=true, write=false, version=5" -->
+```cpp
+#include <cstdint>
+#include <iostream>
+
+int main() {
+    const std::uint8_t packet = 0b101'0'1;
+    const bool readable = (packet & 0b0'0'1) != 0;
+    const bool writable = (packet & 0b0'1'0) != 0;
+    const unsigned version = static_cast<unsigned>(packet >> 2);
+
+    std::cout << std::boolalpha
+              << "read=" << readable
+              << ", write=" << writable
+              << ", version=" << version << '\n';
+}
+```
+
+这里最低两位表示权限，其余高位表示版本。真实协议应同时定义掩码和移位常量，并静态断言字段不会重叠；字面量的分组只提高可读性，不能代替这些不变量。
+
+## 浮点数字分隔
+
+分隔符也能出现在浮点数字序列和指数数字中，例如 `6.022'140'76e23`。它不改变舍入到目标浮点类型的过程。需要十进制精确语义的金融数据仍不应因为字面量更清晰就直接使用二进制浮点。
+
 ## 权威资料
 
 - [N3781：数字分隔符](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3781.pdf)

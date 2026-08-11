@@ -54,6 +54,36 @@ C++11 常量函数几乎只能包含单个返回表达式，复杂算法被迫�
 - 变量模板名称应表达单位与类型语义，避免制造大量隐式全局状态。
 - 用 `static_assert` 验证关键结果，但不要把实现细节写成难以演进的断言。
 
+## 迭代式编译期算法
+
+C++14 允许 `constexpr` 函数包含局部变量、循环和条件分支，让欧几里得算法等逻辑不再依赖模板递归或函数递归。常量求值器按普通控制流执行，遇到不允许的操作才拒绝常量上下文。
+
+<!-- example id="cpp14-constexpr-gcd" std="c++14" file="main.cpp" kind="single" compilers="all" output="gcd=6" -->
+```cpp
+#include <iostream>
+
+constexpr int greatest_common_divisor(int left, int right) {
+    while (right != 0) {
+        const int remainder = left % right;
+        left = right;
+        right = remainder;
+    }
+    return left;
+}
+
+int main() {
+    constexpr int result = greatest_common_divisor(48, 18);
+    static_assert(result == 6, "gcd must be evaluated correctly");
+    std::cout << "gcd=" << result << '\n';
+}
+```
+
+运行期输入可以调用同一函数。编译器只在强制常量上下文中必须解释执行；优化器也可能对普通调用做常量传播，但那属于优化，不改变语言语义。
+
+## 变量模板的链接与地址
+
+每个模板实参组合产生独立变量实例。只读取可内联替换的常量通常没有链接问题；一旦取地址或进行 ODR-use，就需要满足对应版本的定义与链接规则。C++17 内联变量简化了头文件中共享实体的定义，C++14 库仍应谨慎处理需要统一地址的变量模板。
+
 ## 权威资料
 
 - [N3652：放宽 constexpr](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3652.html)

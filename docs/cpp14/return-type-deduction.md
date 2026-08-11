@@ -52,6 +52,38 @@ int main() {
 
 主示例中 `first` 返回带括号的 `front()` 左值，因此调用结果是 `int&`，赋值直接修改容器。检查每个 `decltype(auto)` 返回路径的值类别、被引用对象寿命和代理语义；若不需要透明转发，优先用明确返回类型。
 
+## 括号如何改变返回类型
+
+对于未加括号的变量名，`decltype(name)` 得到变量声明类型；`decltype((name))` 把括号中的名字视为普通左值表达式，得到左值引用。`decltype(auto)` 原样采用这套规则，因此 `return value;` 与 `return (value);` 可能分别返回值和引用。
+
+<!-- example id="cpp14-decltype-auto-parentheses" std="c++14" file="main.cpp" kind="single" compilers="all" output="global=7, copy=9" -->
+```cpp
+#include <iostream>
+
+int global_value = 1;
+
+decltype(auto) reference_to_global() {
+    return (global_value);
+}
+
+auto copy_of_global() {
+    return global_value;
+}
+
+int main() {
+    reference_to_global() = 7;
+    int copy = copy_of_global();
+    copy = 9;
+    std::cout << "global=" << global_value << ", copy=" << copy << '\n';
+}
+```
+
+如果把局部变量写成带括号返回，函数会返回悬空引用。代码评审应把每个 `decltype(auto)` 返回表达式的存储来源明确写出来：全局对象、参数、成员、容器元素还是临时对象。
+
+## 多分支推导
+
+`auto` 或 `decltype(auto)` 返回函数的所有非丢弃 return 必须推导为相同类型。编译器不会自动寻找共同基类，也不会在值与引用之间选择更安全的形式。条件分支需要不同具体类型时，C++14 应显式设计统一返回类型、使用多态，或在后续标准中采用 `variant`。
+
 ## 权威资料
 
 - [N3638：返回类型推导](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3638.html)
