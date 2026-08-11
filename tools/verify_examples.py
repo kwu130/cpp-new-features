@@ -17,6 +17,8 @@ META_RE = re.compile(r'^\s*<!--\s*example\s+(.+?)\s*-->\s*$')
 FENCE_RE = re.compile(r'^\s*```(\S*)\s*$')
 LINK_RE = re.compile(r'(?<!!)(?<!`)\[[^\]]+\]\(([^)]+)\)')
 VALID_STANDARDS = {"c++11", "c++14", "c++17", "c++20"}
+MIN_FEATURE_LINES = 120
+MIN_TUTORIAL_LINES = 10_000
 
 
 @dataclass
@@ -82,8 +84,30 @@ def validate_links(root: Path, files: list[Path]) -> None:
                     raise VerificationError(f"{path}:{line_number}: broken relative link: {destination}")
 
 
+def validate_tutorial_depth(root: Path) -> None:
+    feature_files = sorted(
+        path for path in (root / "docs").glob("cpp*/*.md") if path.name != "README.md"
+    )
+    total = 0
+    shallow: list[str] = []
+    for path in feature_files:
+        count = len(path.read_text(encoding="utf-8").splitlines())
+        total += count
+        if count < MIN_FEATURE_LINES:
+            shallow.append(f"{path.relative_to(root)} ({count})")
+    if shallow:
+        raise VerificationError(
+            f"feature tutorials must contain at least {MIN_FEATURE_LINES} lines: " + ", ".join(shallow)
+        )
+    if total < MIN_TUTORIAL_LINES:
+        raise VerificationError(
+            f"feature tutorial corpus has {total} lines; minimum is {MIN_TUTORIAL_LINES}"
+        )
+
+
 def collect_examples(root: Path, selected: str | None) -> list[Example]:
     groups: dict[str, Example] = {}
+    validate_tutorial_depth(root)
     files = markdown_files(root, selected)
     validate_links(root, files)
     for path in files:

@@ -19,6 +19,8 @@
 
 仓库中的每个 C++ 代码围栏都会由 `tools/verify_examples.py` 提取、编译并运行。普通示例同时接受 GCC 和 Clang 验证，GitHub Actions 会在每次推送和 Pull Request 时执行全量检查。
 
+验证器还会检查所有相对链接、每篇教程最低深度和全库 10,000 行正文门槛。统一的深度学习附录由 `tools/expand_learning_guides.py` 幂等生成，包含标准/实现分界、接口索引、分析维度、FAQ、递进实验和代码审查清单。
+
 ## 特性速查
 
 - C++11：[类型推导](docs/cpp11/type-deduction.md)、[移动语义](docs/cpp11/move-semantics.md)、[Lambda](docs/cpp11/lambdas.md)、[智能指针](docs/cpp11/smart-pointers.md)、[并发](docs/cpp11/concurrency.md)

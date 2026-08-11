@@ -24,6 +24,14 @@
 9. 工程使用建议、迁移策略和检查清单。
 10. 小结及相关专题。
 
+## 深度门槛
+
+- 每篇特性教程（不含版本索引）不得少于 120 行。
+- 全部特性教程正文合计不得少于 10,000 行。
+- 行数只是防止退化的下限，不能用空行、重复段落或无关内容凑数。
+- 聚合主题必须分别介绍每个子类型或子机制，包括核心接口、使用方式、典型实现、成本、限制和错误模式。
+- `tools/expand_learning_guides.py` 维护各专题统一的深度学习、实验和审查附录；修改正文后重新运行该工具。
+
 ## 示例约定
 
 每个 `cpp` 围栏前必须紧邻一行示例元数据：
@@ -41,6 +49,7 @@
 提交前运行：
 
 ```shell
+python3 tools/expand_learning_guides.py
 python3 tools/verify_examples.py --compiler clang++
 python3 tools/verify_examples.py --compiler g++
 ```
