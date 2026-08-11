@@ -147,6 +147,33 @@ int main() {
 
 返回 `T&` 与 `const T&` 不一致，返回 `T` 与 `T&&` 对 decltype(auto) 也不一致。为了让编译通过而对某个分支强制转换，必须确认转换不会制造临时引用或切片。
 
+## 推导与声明可见性的补充
+
+### 语法结果速查
+
+| return 形式 | 典型推导结果 |
+| --- | --- |
+| `auto f(){ return value; }` | 按值，类似 auto 变量推导 |
+| `decltype(auto) f(){ return value; }` | 未加括号 id-expression 走 decltype 特例 |
+| `decltype(auto) f(){ return (value); }` | 左值通常推导为引用，需证明寿命 |
+| `return std::move(local)` + auto | 按值结果可移动构造 |
+| `return std::move(local)` + decltype(auto) | 可能返回悬空 `T&&` |
+| 多个 return + auto | 每个推导类型必须相同，不自动求共同类型 |
+| 空 `return;` | 对应 void 推导路径 |
+| 递归 return | 在递归调用前必须已有可确定返回类型的路径 |
+| 仅有 `auto f();` 声明 | 使用点不能在未知定义下完成返回推导 |
+| 尾置 `decltype(expr)` | 可把表达式有效性放入声明/SFINAE 语境 |
+
+普通 `auto` 返回按值推导，通常丢弃顶层 cv/引用并让数组、函数表达式退化；`decltype(auto)` 才按 decltype 规则精确保留。返回引用不是优化开关，而是生命周期契约。
+
+只有 `auto f();` 声明而看不到定义时，调用方无法获知推导类型并正常使用函数。返回类型推导不适合用作跨源文件隐藏返回类型的 ABI 技巧，定义通常必须在首次需要推导的地方可见。
+
+递归调用出现在任何可用于确定返回类型的 return 之前时，编译器尚不知道递归表达式类型。简单递归可先出现基例，但互递归和公共接口应写显式返回类型。
+
+`return std::move(local);` 配合 decltype(auto) 会产生指向局部对象的右值引用并立即悬空。要移动出局部对象，应按值返回，让移动或复制消除建立独立结果对象。
+
+成员访问还有 decltype 特例：`decltype(object.member)` 取成员声明类型，`decltype((object.member))` 按表达式类别常得到引用。透明访问器应以 static_assert 固定预期返回类型。
+
 ## 权威资料
 
 - [N3638：返回类型推导](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3638.html)

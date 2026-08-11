@@ -166,6 +166,33 @@ C++14 `get<T>(tuple)` 可按类型取得 tuple 元素，但要求该类型在 tu
 
 示例在独占锁内用 `exchange` 更新状态，再在共享锁内读取。锁建立必要的同步关系，`exchange` 只负责值替换。评估读写锁时应测量实际读写比例、临界区时长和目标平台，并明确超时后业务如何恢复，而不是把定时锁当作自动容错。
 
+## 接口级补充
+
+### 库接口速查
+
+| 接口 | 关键语义 |
+| --- | --- |
+| `lock_shared` | 阻塞取得共享所有权 |
+| `try_lock_shared` | 不阻塞尝试共享锁，失败返回 false |
+| `try_lock_shared_for` | 在相对时长内尝试共享锁 |
+| `try_lock_shared_until` | 尝试到绝对截止时间 |
+| `shared_lock` | 共享模式 RAII 所有者，可移动不可复制 |
+| `defer_lock` | 关联互斥量但暂不拥有 |
+| `adopt_lock` | 采用调用者已经持有的共享锁 |
+| `exchange(obj,new)` | 返回旧值并赋新值，不提供同步或回滚 |
+| 透明 `less<>` | 可让有序容器异构比较，避免部分临时键 |
+| `quoted` | 流式定界/转义代理，不是完整数据格式解析器 |
+
+`shared_timed_mutex` 的独占定时接口为 `try_lock_for/until`，共享接口为 `try_lock_shared_for/until`。相对超时接收 duration，绝对截止接收 time_point；调度延迟可能使函数晚于截止返回，它不是硬实时保证。
+
+`shared_lock` 只有在底层互斥量支持对应协议时才能使用定时成员。`defer_lock` 建立关联但不获取，`adopt_lock` 则要求调用方已经以共享模式持锁；标签不会动态验证前置条件。
+
+`std::exchange` 先移动/复制旧值，再把新值转发赋给对象。若赋值阶段抛出，它不提供事务回滚；条件 noexcept 取决于旧值构造和新值赋值两部分。它也是普通操作，不具备 atomic::exchange 的同步语义。
+
+`std::quoted` 返回流代理，按指定定界符/转义符处理简单字符串，并不覆盖 CSV、JSON 的完整语法。代理通常只适合紧邻流表达式使用，不应越过其引用字符串生命周期保存。
+
+C++14 的 `_t` 类型别名只缩短 `typename trait<T>::type` 写法，不改变 SFINAE 发生位置。底层 `::type` 不存在时，究竟安静替换失败还是硬错误仍由使用语境决定。
+
 ## 权威资料
 
 - [N3659：共享互斥量](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3659.html)

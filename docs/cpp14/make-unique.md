@@ -150,6 +150,31 @@ make_unique 返回独占且可低成本转为 shared_ptr；反方向不能把共
 
 不要从同一个裸指针分别构造两个 `unique_ptr`，也不要对 `get()` 的结果调用 `delete`。工厂函数能减少这类错误，但所有权被手动拆出后，仍需遵守唯一所有权不变量。
 
+## 数组初始化与完整类型
+
+### 重载与结果速查
+
+| 调用 | 结果/限制 |
+| --- | --- |
+| `make_unique<T>(args...)` | 返回 `unique_ptr<T>`，直接构造单个 T |
+| `make_unique<T[]>(n)` | 返回 `unique_ptr<T[]>`，值初始化 n 项 |
+| `make_unique<T[N]>(...)` | 已知界数组重载被删除 |
+| `make_unique<int[]>(n)` | 元素初始为零，指针不保存 n |
+| 私有 T 构造函数 | 工厂不自动获得调用者类的访问权 |
+| 自定义删除器 | 标准 make_unique 不接受，需专用工厂 |
+| allocator/arena | 标准 make_unique 不提供注入参数 |
+| 裸花括号实参 | 转发模板通常无法仅凭 `{...}` 推导类型 |
+| 构造抛异常 | 已分配存储按 new-expression 规则清理 |
+| 前置声明 T | 可声明 unique_ptr，但创建点必须看见完整类型 |
+
+`make_unique<T[]>(n)` 对每个元素执行值初始化；对 int 等标量通常得到零值。这与某些 `new T[n]` 默认初始化路径不同。若大型缓冲区会立即全部覆盖，C++14 没有标准“不初始化 make_unique 数组”重载，初始化成本必须测量。
+
+数组版本只接收数量，不接收每项构造参数，并且返回的 `unique_ptr<T[]>` 不保存长度、`operator[]` 也不检查边界。长度属于对象不变量时，vector 往往比独占裸数组更完整。
+
+默认工厂不能注入 allocator、placement 地址或自定义删除器。资源池和 C 句柄应由专用工厂直接构造 `unique_ptr<T, Deleter>`，确保获取成功后立即进入 RAII 对象。
+
+unique_ptr 可以作为前置声明类型的成员，但默认删除器执行处需要完整类型。PImpl 类通常把析构函数定义放入实现文件；make_unique 的创建点也必须看见完整 T 及其构造函数。
+
 ## 权威资料
 
 - [N3656：make_unique](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3656.htm)

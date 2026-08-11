@@ -184,6 +184,31 @@ int main() {
 
 测试不仅看结果，还要覆盖值类别：左值 tuple 不应意外移动，const tuple 不应获得可写引用，右值 tuple 应能把只移动元素转发给消费函数。
 
+## 生成接口的精确契约
+
+### 标准别名速查
+
+| 名称 | 结果与用途 |
+| --- | --- |
+| `integer_sequence<T, Vs...>` | 保存类型 T 和编译期值包 Vs |
+| `value_type` | 精确等于序列参数 T |
+| `size()` | 返回值包元素数量，不检查连续性 |
+| `index_sequence<Is...>` | `integer_sequence<size_t, Is...>` 的别名 |
+| `make_integer_sequence<T,N>` | 生成 T 类型的 `[0,N)` 值包 |
+| `make_index_sequence<N>` | 生成 size_t 类型的 `[0,N)` 索引 |
+| `index_sequence_for<Ts...>` | 按类型包长度生成索引，不读取类型内容 |
+| 空输入 | 形成 `index_sequence<>`，展开表达式必须能处理零项 |
+| 手写重复值 | 合法，但会重复实例化/访问对应位置 |
+| 手写越界值 | sequence 自身可形成，使用 `get<I>` 时才失败 |
+
+`make_integer_sequence<T, N>` 生成从 0 到 N-1 的序列；N 为零得到空包，N 必须是合适的非负常量。`make_index_sequence<N>` 固定使用 `size_t`，`index_sequence_for<Ts...>` 只取类型包长度而不检查各类型内容。
+
+`integer_sequence::size()` 返回包中值的数量，不保证等于最后一个值加一。用户可直接构造重复、逆序或稀疏序列，只有 make_* 工厂承诺标准递增形状。
+
+线性递归实现会为每个索引产生中间特化并可能触及模板深度；分治实现把递归深度降为对数级，编译器还可能为标准别名提供内建。运行时代码同为零不代表编译成本相同。
+
+重复索引会重复访问同一元素，若第一次访问移动了对象，后续看到的是已移动状态。把 `get<I>(tuple)...` 展开成函数实参时，C++14 也不能依赖各实参按索引从左到右求值；有顺序副作用应使用保证顺序的初始化列表技巧或显式递归。
+
 ## 权威资料
 
 - [N3658：整数序列](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2013/n3658.html)
