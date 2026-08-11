@@ -39,19 +39,79 @@ CTAD 只省略类模板实参，不会把类模板变成普通类型。自定义
 
 因此“推导类型”和“构造对象”是两个阶段。推导指引没有函数体，也不在运行时执行；它只声明从参数类型到类模板实参的映射。
 
+隐式候选大致保留类模板参数、构造函数模板参数和构造函数形参，并把返回类型视为相应类模板特化。除此之外，还有用户定义指引，以及从同类对象初始化时很重要的复制推导候选。所有候选一起参与类似函数重载解析的过程。
+
+若模板参数没有出现在可推导的构造函数形参位置，隐式指引也无法凭空推断它。默认模板实参可以补足未推导参数，但默认构造函数并不意味着编译器知道应该选择哪个 `T`。
+
 ## 为什么需要自定义指引
 
 字符串字面量直接按模板推导容易得到 `const char*` 或数组相关类型，而业务容器可能希望拥有 `std::string`。示例的 `Box(const char*) -> Box<std::string>` 把这种策略写在类型接口旁边。
 
 指引过宽会产生悬空或意外复制。例如把任意 `T&` 推导成保存引用的包装器，需要确保包装器语义和生命周期明确。标准库也提供大量指引，让 `pair(1, 2.0)`、`tuple(...)` 等自然工作。
 
+另一个典型场景是构造函数接收迭代器，而类模板参数应是迭代器的元素类型。构造函数模板本身只能推导 `Iterator`，无法反向得出类的 `T`；显式指引可以通过 `iterator_traits` 写出这层映射。
+
+<!-- example id="cpp17-ctad-iterator-guide" std="c++17" file="main.cpp" kind="single" compilers="all" output="count=3, sum=6" -->
+```cpp
+#include <cstddef>
+#include <iostream>
+#include <iterator>
+#include <type_traits>
+#include <vector>
+
+template <typename T>
+class Buffer {
+public:
+    template <typename Iterator>
+    Buffer(Iterator first, Iterator last) : values_(first, last) {}
+
+    std::size_t size() const noexcept { return values_.size(); }
+
+    T sum() const {
+        T result{};
+        for (const T& value : values_) {
+            result += value;
+        }
+        return result;
+    }
+
+private:
+    std::vector<T> values_;
+};
+
+template <typename Iterator>
+Buffer(Iterator, Iterator)
+    -> Buffer<typename std::iterator_traits<Iterator>::value_type>;
+
+int main() {
+    const std::vector<int> source{1, 2, 3};
+    Buffer buffer(source.begin(), source.end());
+    static_assert(std::is_same_v<decltype(buffer), Buffer<int>>);
+    std::cout << "count=" << buffer.size() << ", sum=" << buffer.sum() << '\n';
+}
+```
+
+指引先从迭代器类型取得 `value_type`，推导出 `Buffer<int>`，随后才用两个迭代器调用该特化中的构造函数。若两个迭代器来自不同类型，当前构造函数模板要求它们先共同推导成同一个 `Iterator`；需要哨兵类型时，接口和指引都要分别建模。
+
+### 指引不是普通函数
+
+推导指引写在与类模板相同的语义作用域中，没有名称、函数体或地址，不能直接调用。其尾部返回类型必须是所引导类模板的特化。它也不是类成员，因此不带访问说明符；实际构造函数是否可访问仍在对象构造阶段检查。
+
+用户定义指引之间可能重载，也可能与隐式指引竞争。约束过宽的指引会抢占自然候选，所以应精确表达输入形态，并用编译期断言测试公开示例。
+
 ## 与函数模板推导的差异
 
 CTAD 只用于声明对象等需要类类型的语境，不能在函数参数里单独写裸模板名来表达任意特化。复制初始化列表、聚合模板和别名模板的支持还会随标准版本演进，阅读代码时应确认最低语言版本。
 
+C++17 不为聚合类模板自动生成聚合推导候选；如果类没有合适构造函数，通常需要显式推导指引。别名模板 CTAD 和更完整的聚合推导属于后续标准演进，不能写进以 C++17 为最低版本的示例。
+
+函数形参中的 `Box` 仍不能表示“任意 `Box<T>`”。要接受所有特化，应写函数模板 `template<class T> void use(const Box<T>&)`。CTAD 发生在创建具体对象时，不是类型擦除、子类型多态或新的占位类型系统。
+
 ## ABI 与可维护性
 
 调用点省略的类型仍是静态具体类型，运行时没有额外成本。但新增构造函数或推导指引可能改变旧调用的重载结果，属于源代码兼容性风险。公共库应测试关键推导表达式的 `decltype`。
+
+推导结果会进入变量类型、重载选择和可能的符号名称。虽然推导本身不产生运行时 ABI 设施，但库升级后若同一源码推导成不同特化，行为、对象布局和调用目标都可能变化。把推导测试视为 API 契约测试，而不只是语法测试。
 
 ## 工程检查清单
 
