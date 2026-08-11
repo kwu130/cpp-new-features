@@ -15,6 +15,7 @@ from pathlib import Path
 
 META_RE = re.compile(r'^\s*<!--\s*example\s+(.+?)\s*-->\s*$')
 FENCE_RE = re.compile(r'^\s*```(\S*)\s*$')
+LINK_RE = re.compile(r'(?<!!)\[[^\]]+\]\(([^)]+)\)')
 VALID_STANDARDS = {"c++11", "c++14", "c++17", "c++20"}
 
 
@@ -58,9 +59,34 @@ def markdown_files(root: Path, selected: str | None) -> list[Path]:
     return [path for path in files if needle in (path, *path.parents) or selected in str(path)]
 
 
+def validate_links(root: Path, files: list[Path]) -> None:
+    for path in files:
+        in_fence = False
+        for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+            if line.strip().startswith("```"):
+                in_fence = not in_fence
+                continue
+            if in_fence:
+                continue
+            for match in LINK_RE.finditer(line):
+                destination = match.group(1).strip()
+                if destination.startswith(("#", "http://", "https://", "mailto:")):
+                    continue
+                relative = destination.split("#", 1)[0]
+                target = (path.parent / relative).resolve()
+                try:
+                    target.relative_to(root.resolve())
+                except ValueError as error:
+                    raise VerificationError(f"{path}:{line_number}: link escapes repository: {destination}") from error
+                if not target.exists():
+                    raise VerificationError(f"{path}:{line_number}: broken relative link: {destination}")
+
+
 def collect_examples(root: Path, selected: str | None) -> list[Example]:
     groups: dict[str, Example] = {}
-    for path in markdown_files(root, selected):
+    files = markdown_files(root, selected)
+    validate_links(root, files)
+    for path in files:
         lines = path.read_text(encoding="utf-8").splitlines()
         pending: tuple[dict[str, str], int] | None = None
         index = 0
@@ -133,8 +159,11 @@ def collect_examples(root: Path, selected: str | None) -> list[Example]:
 
 
 def compiler_family(compiler: str) -> str:
-    name = Path(compiler).name.lower()
-    return "clang" if "clang" in name else "gcc"
+    result = subprocess.run(
+        [compiler, "--version"], text=True, capture_output=True, timeout=10, check=False
+    )
+    identity = (result.stdout + result.stderr).lower()
+    return "clang" if "clang" in identity else "gcc"
 
 
 def run_command(command: list[str], cwd: Path, timeout: int = 30) -> subprocess.CompletedProcess[str]:
@@ -228,4 +257,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
