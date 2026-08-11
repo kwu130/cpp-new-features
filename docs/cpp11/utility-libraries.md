@@ -34,11 +34,37 @@ int main() {
 
 稳态耗时测量应使用 `steady_clock`，因为它保证单调；`system_clock` 可与日历时间转换，但可能因校时向前或向后跳。类型系统消除了把毫秒误当秒的常见接口错误，却不能替代对时钟语义的选择。
 
+Period 是 `std::ratio`，例如 milliseconds 为 ratio<1,1000> 秒。duration 的算术通过 common_type 选择能表达双方单位的结果，2 秒+500 毫秒得到毫秒精度。Rep 可以是整数、浮点或自定义数值类型，但转换安全规则随表示性质变化。
+
+整数 duration 从细单位到粗单位可能丢余数，因此要求显式 duration_cast；粗到细能精确表示时通常可隐式转换。浮点 Rep 允许更多转换，但仍要考虑舍入与范围。
+
+`duration::zero/min/max` 提供边界，count() 取原始 Rep。业务 API 应传 duration 类型而不是裸 count，序列化时同时固定单位和数值范围。
+
+### 时钟接口
+
+Clock 提供 rep/period/duration/time_point、`is_steady` 和静态 `now()`。high_resolution_clock 可能只是 system_clock 或 steady_clock 别名，不承诺既最高精度又单调；耗时测量仍检查 is_steady/直接用 steady_clock。
+
+system_clock 的 epoch 未由 C++11 跨平台协议固定，`time_since_epoch().count()` 不应直接持久化为无单位通用时间戳。用 `to_time_t/from_time_t` 与 C 日历接口时也要处理精度和时区格式化。
+
 ## 随机引擎与分布
 
 引擎是确定性状态机：给定相同种子产生相同原始序列，适合可复现实验。分布把引擎输出映射到均匀整数、正态分布等目标统计分布。将二者分离允许复用引擎并清晰表达概率模型。
 
 固定种子适合测试，生产模拟可用 `random_device` 或外部熵播种，但 `random_device` 是否真正非确定由实现决定。不要对引擎结果直接 `% n`，这可能产生模偏差；使用 `uniform_int_distribution`。
+
+标准引擎包括线性同余、Mersenne Twister、subtract-with-carry 等模板及别名。mt19937 状态较大、周期长、可复现，不能因为名字常见就当密码学安全。`default_random_engine` 的具体算法由实现选择，不适合跨平台固定序列。
+
+引擎提供 `min/max/operator()`、seed、discard 和流序列化状态等接口。复制引擎会复制完整状态，随后产生相同序列；并发共享同一可变引擎会数据竞争，常用每线程引擎或外部锁。
+
+`seed_seq` 把一组整数扩散到较大引擎状态，比只塞一个低熵整数更全面，但不会凭空创造熵。生产播种需要收集足够随机源，再交给 seed_seq。
+
+### 分布状态和参数
+
+分布对象可带内部缓存，例如 normal_distribution 可能缓存第二个样本；`reset()` 清除此状态。复制/序列化可复现实验时要同时保存引擎和分布状态，而非只保存种子。
+
+`param_type` 允许临时用另一组参数调用同一分布。分布的闭区间/开区间、端点和参数前置条件各不相同，uniform_int_distribution 是闭区间 `[a,b]`，不能类推到 real 分布。
+
+分布映射算法的具体输出序列未必跨标准库一致，因此测试统计性质/范围；要逐位可复现的模拟协议，应固定项目自己的映射算法和版本。
 
 ## 正则引擎模型
 
@@ -46,11 +72,33 @@ int main() {
 
 `regex_match` 要求整个输入匹配，`regex_search` 只寻找子串；两者混淆是高频错误。复杂语法、有嵌套结构或需要精确错误恢复时应使用专用解析器。
 
+basic_regex 可选择 ECMAScript（默认）、basic、extended、awk、grep、egrep 等 grammar flag，不同语法的转义和特性不同。复制网上其他语言正则前必须确认语法模式。
+
+构造/assign 模式失败抛 `regex_error`，可读取 code() 区分括号、转义、范围、空间等错误类别。若模式来自用户输入，编译阶段就要捕获并限制长度/复杂度。
+
+匹配标志可控制 not_bol/not_eol、连续匹配等行为。`match_continuous` 配合 regex_search 可要求从起点匹配，仍与整串 regex_match 的结束要求不同。
+
+### 结果和迭代器
+
+`match_results` 含整体匹配下标 0、捕获组、prefix/suffix；未参与的可选组有 matched=false。`sub_match` 保存迭代器区间，调用 str() 才物化字符串。
+
+`regex_iterator` 遍历非重叠匹配，`regex_token_iterator` 可遍历指定捕获或未匹配片段；零长度匹配需要理解迭代器如何前进，避免自己写循环停在同一位置。
+
+`regex_replace` 支持替换格式和标志，但不是上下文敏感模板系统。处理转义、输出上限和恶意模式时仍要做资源控制。
+
 ## 示例解析与工程权衡
 
 主示例显式把 2500 毫秒转换为秒，结果截断为 2；固定种子的掷骰只检查范围而不依赖跨实现的具体映射序列；正则使用整串匹配验证标识符。
 
 代码审查时分别确认时间单位与时钟、随机种子与安全等级、正则匹配范围与最坏性能，不要把三个便利库当作无成本黑盒。
+
+## 三类设施的实现成本
+
+chrono 类型大多是零开销数值包装，转换常在编译期化简比例；真正 `now()` 成本来自系统时钟调用。random 引擎成本来自状态更新，分布可能有除法/对数等算法；regex 通常最重，包含解析、自动机/回溯和分配。
+
+不要因都在“工具库”就采用同一缓存策略：duration/time_point 是小值对象，随机引擎是可变状态，regex 是可复用编译模式。对象所有权、线程安全和初始化时机完全不同。
+
+基准要在目标标准库进行，尤其 C++11 早期 regex 实现的完整性和性能差异较大。最低编译器支持语言不等于其 regex 库成熟。
 
 ## `chrono` 的转换与舍入
 
@@ -96,6 +144,10 @@ int main() {
 ## 正则捕获与匹配结果寿命
 
 `smatch` 内部子匹配通常引用原始字符串的字符区间；原字符串必须在读取匹配结果期间保持有效且不发生使引用失效的修改。频繁匹配同一模式时复用已经构造的 `regex`，避免重复解析。
+
+cmatch 对 C 字符指针迭代器，smatch 对 string::const_iterator，使用错误结果类型会造成重载不匹配。输入临时字符串不能安全产生长期 match_results 引用，先命名并保持所有者。
+
+正则对象的 const 匹配是否可多线程共享需结合标准库线程安全一般规则：多个线程只读同一对象通常可行，但 match_results 必须每次独立，不能共享可变结果。
 
 <!-- example id="cpp11-regex-captures" std="c++11" file="main.cpp" kind="single" compilers="all" output="name=cpp, version=11" -->
 ```cpp
