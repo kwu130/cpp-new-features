@@ -28,17 +28,86 @@ int main() {
 
 `jthread` 可移动不可复制。移动会转移线程句柄和停止源，源对象变为不可连接。显式 `join()` 后析构不再重复连接。
 
+析构的概念顺序是：若 `joinable()`，调用 `request_stop()`，随后 `join()`。停止回调可能就在析构线程同步运行，然后析构线程等待工作线程结束。因此析构不是轻量清理操作，作用域边界可能成为阻塞点。
+
+`detach()` 仍然存在；分离后对象不再可连接，析构不能等待线程，也无法靠自身生命周期保证捕获对象存活。除非有独立所有权管理，优先保留 joinable RAII 语义。
+
+与 `thread` 类似，`get_id()`、`native_handle()`、`hardware_concurrency()` 等服务于线程身份/平台集成。native handle 操作不受标准停止协议保护，平台调用与 jthread 生命周期必须协调。
+
+### 可调用对象的令牌注入
+
+构造时若函数对象可按 `(stop_token, args...)` 调用，jthread 优先采用这一路径并自动传入关联令牌；否则按普通 `(args...)` 调用。令牌位置固定在用户参数之前，不是任意匹配。
+
+过载函数对象若两种签名都可调用，令牌版本会改变选择。公共任务类型应明确提供哪种 operator()，避免通用转发重载意外吞掉 stop_token。
+
 ## 停止状态的组成
 
 `stop_source` 可发出请求，`stop_token` 观察请求，`stop_callback` 在请求到达时运行回调；它们共享一个线程安全的停止状态。请求是幂等的，首次成功请求触发已注册回调。
 
 当 jthread 的可调用对象能以 `stop_token` 作为首参数调用时，构造函数会自动传入令牌。停止只是协作信号，没有抢占式终止、栈展开或锁释放。任务必须选择安全检查点，并维护中止时的不变量。
 
+停止状态通常是引用计数共享控制块，包含“是否请求停止”、已注册回调集合和同步元数据。标准规定观察行为，不规定分配方式或具体锁结构。复制 source/token 只是共享状态，不复制工作线程。
+
+`stop_possible()` 区分“当前未请求”与“永远不可能由任何 source 请求”。默认构造的 stop_token 通常没有关联可停止状态；由 jthread 取得的令牌在相应状态存在时可停止。
+
+<!-- example id="cpp20-stop-state" std="c++20" file="main.cpp" kind="single" compilers="all" output="first=true, second=false, callbacks=1" -->
+```cpp
+#include <iostream>
+#include <stop_token>
+
+int main() {
+    std::stop_source source;
+    int callbacks = 0;
+    std::stop_callback callback(source.get_token(), [&] {
+        ++callbacks;
+    });
+
+    const bool first = source.request_stop();
+    const bool second = source.request_stop();
+    std::cout << std::boolalpha
+              << "first=" << first
+              << ", second=" << second
+              << ", callbacks=" << callbacks << '\n';
+}
+```
+
+首次请求原子地把共享状态转为已停止并调用已注册回调，返回 true；后续请求观察到状态已设置，返回 false，也不会再次调用同一回调。回调对象必须活到需要注册的区间结束，其析构会与并发执行协调。
+
+多个 stop_source 可以引用同一状态，任何一个成功请求都会影响所有 token。销毁某个 source 不等于请求停止；只有状态再无可发出请求的 source 时，token 的 `stop_possible` 才可能反映不可停止。
+
 ## 回调并发语义
 
 停止回调可能在发出请求的线程同步执行；注册与请求并发时也有严格协调。回调应短小、不能假设运行在线程工作体中，并避免获取会与请求方形成环的锁。
 
 等待循环可结合令牌感知的条件变量设施，减少轮询。对不支持取消的阻塞系统调用，仍需平台机制、超时或关闭句柄来唤醒。
+
+若注册 stop_callback 时停止已经请求，回调会在构造过程中同步执行。若请求与注册竞争，标准协调保证回调不会既遗漏又无规则执行两次，但执行线程可能是请求线程或注册路径相关线程。
+
+stop_callback 析构必须确保回调不再访问已销毁对象；若另一个线程正在执行回调，析构可能等待。回调内部销毁自身关联对象等重入场景有精细规则，常规设计应避免这种生命周期纠缠。
+
+回调抛出异常会导致终止，因此回调应为不抛、短小操作，例如设置标志、通知条件变量、取消平台句柄。不要直接在回调里执行复杂清理或 join 当前线程。
+
+### 可取消等待
+
+`condition_variable_any` 在 C++20 提供接收 stop_token 的等待重载，可在谓词满足或停止请求时返回。普通 `condition_variable` 没有同样的通用令牌接口；可以用 stop_callback 通知它，但要仔细维护锁与谓词。
+
+轮询 `stop_requested()` 的粒度决定取消延迟与检查开销。CPU 循环可按批次检查，阻塞 I/O 必须结合可中断调用、超时或关闭资源。令牌本身不会唤醒一个完全不知道它的系统调用。
+
+## 取消语义与状态一致性
+
+“停止”不是“失败”。任务应区分正常完成、请求取消、业务错误和外部资源失败，并决定部分结果是否提交。安全检查点通常放在一个事务单元完成之后，避免在不变量暂时破坏时退出。
+
+请求只是建议，任务可能在请求到达前已经完成。调用方不能看到 request_stop 返回 true 就断言结果一定取消；最终状态要由任务协议报告。
+
+停止传播可把父 token 连接到子 stop_source，但标准不会自动构建任务树。注册桥接回调时要管理回调对象生命周期，否则桥接刚创建就析构，后续请求无法传播。
+
+## 析构和锁顺序风险
+
+若持有工作线程完成所需互斥量时销毁 jthread，析构 join 会等待工作线程，而工作线程等待同一锁，形成死锁。应在锁外结束 jthread 生命周期，或先移动线程对象到安全作用域再释放锁。
+
+类成员按声明逆序析构。若 jthread 使用其他成员，应把线程成员声明在被访问状态之后，使线程先析构/join，再销毁状态；构造失败路径也要遵守这一所有权顺序。
+
+任务捕获 `this` 时，jthread 的自动 join 只有在它确实先于其他成员析构时才保护访问。显式成员布局、停止检查和析构测试缺一不可。
 
 ## 示例解析与工程策略
 
@@ -47,6 +116,7 @@ int main() {
 ## 权威资料
 
 - [P0660R10：jthread 与停止令牌](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p0660r10.pdf)
+- [工作草案：Stop tokens](https://eel.is/c++draft/thread.stoptoken)
 - [CPP20 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2131r0.html)
 
 提案用于理解设计动机和最初采用的方案；规范性行为应以对应标准版本和后续缺陷修正后的工作草案为准。
