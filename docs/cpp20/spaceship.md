@@ -31,15 +31,70 @@ int main() {
 
 调用方通常写 `a < b`、`a == b`，编译器把关系表达式改写为 `<=>` 和必要的 `==`。不要依赖比较类别对象的内部整数表示，应与零比较或使用命名结果。
 
+比较类别对象刻意不提供普通整数转换。可以写 `result < 0`、`result == 0`、`result > 0`，也可以用 `is_lt`、`is_eq`、`is_gt` 等命名函数；零在这里是协议中的比较基准，不是某个可读取的状态码字段。
+
+`strong_ordering` 区分 less/equal/greater，且相等对象可互相替代；`weak_ordering` 使用 equivalent，允许忽略大小写字符串这类“排序等价但观察表示不同”的情况；`partial_ordering` 还包含 unordered。更强类别能转换为较弱类别，反向通常不成立。
+
+<!-- example id="cpp20-partial-ordering" std="c++20" file="main.cpp" kind="single" compilers="all" output="unordered=true" -->
+```cpp
+#include <compare>
+#include <iostream>
+#include <limits>
+
+struct Measurement {
+    double value;
+    auto operator<=>(const Measurement&) const = default;
+};
+
+int main() {
+    const Measurement valid{1.0};
+    const Measurement missing{std::numeric_limits<double>::quiet_NaN()};
+    const auto result = valid <=> missing;
+    std::cout << std::boolalpha
+              << "unordered="
+              << (result == std::partial_ordering::unordered) << '\n';
+}
+```
+
+默认比较继承 `double` 的偏序性质。NaN 与普通值既不小于、不等于也不大于，结果是 `unordered`。若业务要把缺失值固定排到末尾，必须编写显式规则，不能把偏序结果直接当成严格弱序交给排序容器。
+
+### `compare_three_way` 与回退工具
+
+`std::compare_three_way` 是执行三路比较的函数对象，并带有透明调用能力；`three_way_comparable` 等 Concepts 描述比较表达式与共同引用的一致性。泛型算法可用它们明确要求，而不是假定每个类型都返回 `strong_ordering`。
+
+为迁移仅提供 `<` 或 `==` 的旧类型，标准库还有 `compare_strong_order_fallback`、`compare_weak_order_fallback`、`compare_partial_order_fallback` 等命名定制点。它们能按规则回退组合旧运算符，但返回类别必须符合真实语义，不能用工具名称提升一个本来不满足的顺序关系。
+
 ## 默认成员比较
 
 `= default` 按基类和非静态成员的声明顺序逐项比较，遇到非相等结果即停止。编译器从成员比较能力推导返回类别；若某成员不可比较，默认运算符会被删除。
 
 默认 `<=>` 同时可促成生成相等比较，但自定义 `<=>` 时通常还要明确 `operator==`。对指针、浮点、大小写不敏感字符串等成员，应确认默认语义真的是业务需要。
 
+比较顺序先处理直接基类子对象，再按声明顺序处理非静态数据成员；数组成员按元素顺序展开。遇到首个非零/非等价结果即返回，所以较早成员既决定词典序优先级，也影响平均比较成本。
+
+默认返回类型写 `auto` 时，编译器从所有子对象结果合成公共比较类别。也可以显式声明类别，例如 `strong_ordering operator<=>(...) const = default;`；如果成员比较不能转换到该类别，函数被定义为删除。这能把“必须是强序”变成编译期约束。
+
+默认 `operator==` 可独立声明，用逐成员相等比较并允许优化器生成高效代码。若只自定义 `<=>` 而不默认/定义 `==`，相等表达式不会总能凭空获得符合意图的候选。把两者作为同一关系设计和测试。
+
+缓存字段、互斥量、统计计数等非身份成员会使默认比较不可用或语义错误。此时要手写只比较身份字段，或把数据拆成可比较的值对象与不可比较运行状态。
+
+## 重写候选与表达式方向
+
+C++20 比较表达式的重载解析会考虑重写候选。例如 `a < b` 可以基于 `a <=> b` 与零比较，某些情况下还会考虑参数方向反转后的候选。这减少对称运算符样板，但也让旧代码中新加 `<=>` 可能改变重载选择。
+
+重写不会忽略访问控制、转换成本或约束。若隐式转换在两个方向都可行，仍可能产生歧义。迁移公共类型时应为混合类型比较建立清晰策略：只允许同类型，提供一个规范方向的异构 `<=>`，或先显式转换到公共表示。
+
+`!=` 可从合适的 `==` 重写，其他关系从 `<=>` 重写。手写六个运算符再加入 `<=>` 会扩大候选集，应删除冗余重载或验证没有抢占。
+
 ## 排序一致性
 
 关联容器和排序算法依赖严格弱序。自定义比较若违反传递性，容器行为会失去保证。相等、哈希和排序也应保持一致：若两个对象业务上等价，哈希键和比较策略必须采用同一规范化规则。
+
+强相等/等价的“可替代性”意味着除地址等显式非值观察外，使用任一对象的可见行为一致。大小写不敏感比较把 `"A"` 与 `"a"` 视为等价，但原始文本不同，通常只能承诺弱序。
+
+浮点类型的自然 `<=>` 是偏序。需要用于 `map` 键或 `ranges::sort` 时，应禁止 NaN、先规范化特殊值，或使用明确定义 total order 的比较器。不能仅把返回类型强制写为 `strong_ordering`，因为无序状态无法诚实转换。
+
+哈希容器使用 `==` 判等；有序容器使用比较器的等价关系。若同一领域类型在两类容器中使用，应测试两套关系对规范化值的一致性，否则查找、去重和序列化可能产生不同结果。
 
 ## 性能与迁移
 
@@ -52,6 +107,7 @@ int main() {
 ## 权威资料
 
 - [P0515R3：三路比较](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2017/p0515r3.pdf)
+- [工作草案：Comparison concepts](https://eel.is/c++draft/cmp.concept)
 - [CPP20 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2131r0.html)
 
 提案用于理解设计动机和最初采用的方案；规范性行为应以对应标准版本和后续缺陷修正后的工作草案为准。
