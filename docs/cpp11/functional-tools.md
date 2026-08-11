@@ -55,6 +55,42 @@ int main() {
 
 业务记录优先具名结构体；泛型元数据使用类型萃取；高频调用避免不必要类型擦除；长期回调审查捕获生命周期；任何 `bind` 表达式若不能一眼看懂，改写为 Lambda。
 
+## 使用类型萃取选择接口
+
+`enable_if` 根据编译期布尔条件是否存在成员 `type`，利用替换失败从候选集合移除函数模板。它适合 C++11 库实现兼容性，但条件出现在返回类型时可能让诊断难读；应把约束封装成有名称的萃取。
+
+<!-- example id="cpp11-type-traits-dispatch" std="c++11" file="main.cpp" kind="single" compilers="all" output="integer floating" -->
+```cpp
+#include <iostream>
+#include <type_traits>
+
+template <typename T>
+typename std::enable_if<std::is_integral<T>::value, const char*>::type
+category(T) {
+    return "integer";
+}
+
+template <typename T>
+typename std::enable_if<std::is_floating_point<T>::value, const char*>::type
+category(T) {
+    return "floating";
+}
+
+int main() {
+    std::cout << category(42) << ' ' << category(3.5) << '\n';
+}
+```
+
+两个模板的函数签名不能只依赖默认模板实参差异，否则可能被视为重复声明。真实库还要处理枚举、用户数值类型和 cv/ref 限定，不能简单把标准算术类型等同于业务可计算类型。
+
+## `tie`、`ignore` 与元组赋值
+
+`std::tie` 创建引用元组，可把多值结果解包到已有变量；`std::ignore` 丢弃不关心的位置。引用元组不拥有对象，不能保存到超过被引用变量寿命的地方。C++17 结构化绑定通常更适合声明新变量，而 `tie` 仍适合给已有变量赋值。
+
+## 类型擦除的接口选择
+
+`std::function` 的签名只描述参数和返回值，不表达 `noexcept`、所有权或调用次数。回调注册接口还需在文档中说明是否复制、在哪个线程调用、能否重入、保存多久以及异常如何处理。类型擦除解决存储问题，不自动补足这些契约。
+
 ## 权威资料
 
 - [函数对象与调用包装](https://eel.is/c++draft/function.objects)

@@ -71,6 +71,70 @@ Promise/Future 把一次性结果或异常从生产者传给消费者。`future.
 
 工作线程在互斥区写入共享值，通过 Promise 发布结果并增加原子计数；主线程 `get` 后连接线程，再启动明确的异步任务。工程检查时应画出共享状态、所有访问路径和 happens-before 边，验证线程在异常路径也会连接，并用线程消毒器补充测试。
 
+## 条件变量的完整等待协议
+
+共享谓词必须由同一互斥量保护。生产者持锁修改状态，解锁后或解锁前通知；消费者通过带谓词的 `wait` 重复检查条件。通知可以合并或早于等待发生，真正不会丢失的是受锁保护的状态。
+
+<!-- example id="cpp11-condition-variable-queue" std="c++11" file="main.cpp" kind="single" compilers="all" output="value=42" -->
+```cpp
+#include <condition_variable>
+#include <iostream>
+#include <mutex>
+#include <thread>
+
+int main() {
+    std::mutex mutex;
+    std::condition_variable ready;
+    bool available = false;
+    int value = 0;
+
+    std::thread producer([&] {
+        {
+            std::lock_guard<std::mutex> lock(mutex);
+            value = 42;
+            available = true;
+        }
+        ready.notify_one();
+    });
+
+    {
+        std::unique_lock<std::mutex> lock(mutex);
+        ready.wait(lock, [&] { return available; });
+        std::cout << "value=" << value << '\n';
+    }
+    producer.join();
+}
+```
+
+## release/acquire 发布普通数据
+
+原子状态可以发布此前对普通内存的写入。生产者先写数据，再以 release 存储状态；消费者以 acquire 读取到该状态后，可以看见之前的数据。这要求 acquire 确实读取 release 序列中的值。
+
+<!-- example id="cpp11-release-acquire" std="c++11" file="main.cpp" kind="single" compilers="all" output="published=42" -->
+```cpp
+#include <atomic>
+#include <iostream>
+#include <thread>
+
+int main() {
+    int data = 0;
+    std::atomic<bool> ready(false);
+    std::thread producer([&] {
+        data = 42;
+        ready.store(true, std::memory_order_release);
+    });
+    std::thread consumer([&] {
+        while (!ready.load(std::memory_order_acquire)) {
+        }
+        std::cout << "published=" << data << '\n';
+    });
+    producer.join();
+    consumer.join();
+}
+```
+
+忙等会持续占用 CPU，示例只用于展示内存序；真实等待应考虑条件变量、平台等待原语或 C++20 原子 wait。若把状态操作都改成 relaxed，对普通 `data` 的可见性就没有这条同步保证。
+
 ## 权威资料
 
 - [线程支持库](https://eel.is/c++draft/thread)

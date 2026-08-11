@@ -52,6 +52,69 @@ int main() {
 
 代码审查时分别确认时间单位与时钟、随机种子与安全等级、正则匹配范围与最坏性能，不要把三个便利库当作无成本黑盒。
 
+## `chrono` 的转换与舍入
+
+`duration_cast` 在目标周期更粗时会截断，不进行四舍五入。负持续时间的截断方向同样应通过类型转换规则确认。C++17 才加入标准 `floor`、`ceil`、`round` 时间工具，C++11 代码需要显式定义业务舍入策略。
+
+<!-- example id="cpp11-chrono-units" std="c++11" file="main.cpp" kind="single" compilers="all" output="milliseconds=2500, seconds=2" -->
+```cpp
+#include <chrono>
+#include <iostream>
+
+int main() {
+    const std::chrono::seconds seconds(2);
+    const std::chrono::milliseconds remainder(500);
+    const std::chrono::milliseconds total = seconds + remainder;
+    const std::chrono::seconds truncated =
+        std::chrono::duration_cast<std::chrono::seconds>(total);
+    std::cout << "milliseconds=" << total.count()
+              << ", seconds=" << truncated.count() << '\n';
+}
+```
+
+## 随机数的可复现测试
+
+引擎序列由标准算法定义，但分布如何把引擎输出映射到结果在不同实现间不必产生相同序列。因此跨标准库测试不应断言 `uniform_int_distribution` 的某个具体首值；应检查范围、统计性质或把分布封装在项目固定算法中。
+
+<!-- example id="cpp11-random-range" std="c++11" file="main.cpp" kind="single" compilers="all" output="all-in-range=true" -->
+```cpp
+#include <iostream>
+#include <random>
+
+int main() {
+    std::mt19937 engine(2024);
+    std::uniform_int_distribution<int> dice(1, 6);
+    bool valid = true;
+    for (int index = 0; index < 100; ++index) {
+        const int value = dice(engine);
+        valid = valid && value >= 1 && value <= 6;
+    }
+    std::cout << "all-in-range=" << std::boolalpha << valid << '\n';
+}
+```
+
+## 正则捕获与匹配结果寿命
+
+`smatch` 内部子匹配通常引用原始字符串的字符区间；原字符串必须在读取匹配结果期间保持有效且不发生使引用失效的修改。频繁匹配同一模式时复用已经构造的 `regex`，避免重复解析。
+
+<!-- example id="cpp11-regex-captures" std="c++11" file="main.cpp" kind="single" compilers="all" output="name=cpp, version=11" -->
+```cpp
+#include <iostream>
+#include <regex>
+#include <string>
+
+int main() {
+    const std::string text = "cpp-11";
+    const std::regex pattern("([a-z]+)-([0-9]+)");
+    std::smatch matches;
+    if (!std::regex_match(text, matches, pattern) || matches.size() != 3) {
+        return 1;
+    }
+    std::cout << "name=" << matches[1].str()
+              << ", version=" << matches[2].str() << '\n';
+}
+```
+
 ## 权威资料
 
 - [时间工具](https://eel.is/c++draft/time)

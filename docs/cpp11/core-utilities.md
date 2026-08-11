@@ -59,6 +59,69 @@ int main() {
 
 异常保证必须与实现一致；单位字面量优先返回强类型；线程局部对象保持轻量且避免复杂析构依赖；布局相关代码同时验证 `sizeof`、`alignof` 和目标 ABI，而不是假设跨平台一致。
 
+## 条件 `noexcept` 与泛型包装器
+
+模板包装器的异常保证通常取决于被包装操作。条件 `noexcept(noexcept(expression))` 先在内层查询表达式，再把结果用于外层函数规格。这样类型系统可以准确区分不抛与可能抛出的实例。
+
+<!-- example id="cpp11-conditional-noexcept" std="c++11" file="main.cpp" kind="single" compilers="all" output="safe=true, risky=false" -->
+```cpp
+#include <iostream>
+#include <utility>
+
+struct Safe {
+    Safe(Safe&&) noexcept {}
+};
+
+struct Risky {
+    Risky(Risky&&) noexcept(false) {}
+};
+
+template <typename T>
+void relocate(T& value) noexcept(noexcept(T(std::move(value)))) {
+    T moved(std::move(value));
+    (void)moved;
+}
+
+int main() {
+    std::cout << std::boolalpha
+              << "safe=" << noexcept(relocate(std::declval<Safe&>()))
+              << ", risky=" << noexcept(relocate(std::declval<Risky&>())) << '\n';
+}
+```
+
+`declval` 只能用于不求值语境；它让查询代码不必真的构造对象。外层规格和函数体必须查询同一个操作，否则声明承诺可能与实际执行不一致。
+
+## 线程局部实例的隔离
+
+每个线程第一次访问函数内 `thread_local` 对象时，会初始化自己的实例。同名变量在不同线程有不同地址和状态；主线程也拥有独立实例。线程退出时，已构造的非平凡线程局部对象按实现管理的顺序销毁。
+
+<!-- example id="cpp11-thread-local-isolation" std="c++11" file="main.cpp" kind="single" compilers="all" output="workers=2,2 main=0" -->
+```cpp
+#include <iostream>
+#include <thread>
+
+thread_local int calls = 0;
+
+void run(int& result) {
+    ++calls;
+    ++calls;
+    result = calls;
+}
+
+int main() {
+    int first = 0;
+    int second = 0;
+    std::thread left(run, std::ref(first));
+    std::thread right(run, std::ref(second));
+    left.join();
+    right.join();
+    std::cout << "workers=" << first << ',' << second
+              << " main=" << calls << '\n';
+}
+```
+
+在线程池中，任务会复用工作线程，因此 thread_local 状态可能跨请求残留。请求上下文若需要严格清理，应使用作用域对象或显式重置，而不能假设每个任务获得新线程。
+
 ## 权威资料
 
 - [异常规格](https://eel.is/c++draft/except.spec)

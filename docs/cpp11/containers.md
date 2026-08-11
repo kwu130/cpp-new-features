@@ -49,6 +49,41 @@ int main() {
 
 工程中应提前 `reserve` 降低可预测扩容，在暴露容器元素引用前记录失效条件，并用需求选择容器，而不是只按渐进复杂度表格选择。
 
+## 哈希策略接口
+
+无序容器公开 `bucket_count`、`load_factor`、`max_load_factor`、`reserve` 和 `rehash`，让调用方观察或影响桶策略。`reserve(n)` 面向期望元素数量，容器据最大负载因子选择足够桶；`rehash(n)` 直接要求桶数量至少满足约束。
+
+调用 `reserve` 不是正确性的要求，而是性能规划。它可能立即分配并使迭代器失效。元素引用和指针在 rehash 后仍保持有效，但依赖遍历顺序的代码本来就不具备可移植性。
+
+<!-- example id="cpp11-unordered-emplace" std="c++11" file="main.cpp" kind="single" compilers="all" output="inserted=true, existing=false, size=2" -->
+```cpp
+#include <iostream>
+#include <string>
+#include <unordered_map>
+#include <utility>
+
+int main() {
+    std::unordered_map<std::string, int> values;
+    values.reserve(8);
+    const std::pair<std::unordered_map<std::string, int>::iterator, bool> first =
+        values.emplace("answer", 42);
+    const std::pair<std::unordered_map<std::string, int>::iterator, bool> duplicate =
+        values.emplace("answer", 100);
+    values.emplace("year", 2011);
+
+    std::cout << std::boolalpha
+              << "inserted=" << first.second
+              << ", existing=" << duplicate.second
+              << ", size=" << values.size() << '\n';
+}
+```
+
+`emplace` 返回的布尔值说明是否真正插入。C++11 中即使键重复，实参表达式也已经在调用前求值，且实现可能构造候选元素；不能把它当作延迟计算接口。C++17 的 `try_emplace` 更明确地避免在键已存在时构造映射值。
+
+## 选择容器的接口问题
+
+如果调用方需要连续字节、稳定索引或与 C API 互操作，应优先连续容器；需要稳定节点地址和频繁中间插入时再考虑节点容器；只为“查找快”选择无序容器前，还要确认键哈希质量、最坏情况、安全输入和输出稳定性。
+
 ## 权威资料
 
 - [容器库要求](https://eel.is/c++draft/containers)

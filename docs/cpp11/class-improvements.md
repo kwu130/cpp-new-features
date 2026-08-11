@@ -67,6 +67,46 @@ int main() {
 
 示例把抽象基类析构设为虚函数，用 `override` 锁定重写关系，以 `final` 表达 Worker 不再作为扩展点，并删除复制操作表达身份对象不可复制。设计类时应分别回答：它是否拥有资源、能否复制、移动后状态如何、是否用于多态删除、继承是否真的是稳定扩展机制。
 
+## 委托构造与默认成员初始化
+
+委托构造函数只能在成员初始化列表中选择同一个类的另一个构造函数。一旦选择委托目标，当前构造函数不能再直接初始化其他成员；目标构造完成后才执行当前函数体。这能把参数校验和不变量集中到一个主构造函数。
+
+C++11 默认成员初始化器为没有在构造函数列表中显式初始化的成员提供默认值。它与委托构造配合时，可以减少每个构造函数重复写相同默认状态。若构造函数显式初始化某成员，显式项优先。
+
+<!-- example id="cpp11-delegating-enum-class" std="c++11" file="main.cpp" kind="single" compilers="all" output="port=8080, code=2" -->
+```cpp
+#include <cstdint>
+#include <iostream>
+
+enum class ErrorCode : std::uint8_t {
+    none = 0,
+    unavailable = 2
+};
+
+class ServerConfig {
+public:
+    ServerConfig() : ServerConfig(8080) {}
+    explicit ServerConfig(int port) : port_(port) {}
+    int port() const { return port_; }
+
+private:
+    int port_;
+};
+
+int main() {
+    const ServerConfig config;
+    const ErrorCode code = ErrorCode::unavailable;
+    std::cout << "port=" << config.port()
+              << ", code=" << static_cast<int>(code) << '\n';
+}
+```
+
+显式底层类型适合协议和存储布局，但枚举对象的实际大小与 ABI 仍应在目标平台验证。`enum class` 不隐式转整数，因此协议编码必须显式转换，也应检查值是否落在有效枚举集合。
+
+## `default` 与 `delete` 的重载影响
+
+删除函数仍参与重载解析；如果它是最佳匹配，程序会在调用点报“使用已删除函数”，而不是退而选择更差的转换。这使 `void process(double) = delete;` 可以明确禁止浮点输入。默认函数则保留编译器生成语义，并允许调整可见性或在类外定义。
+
 ## 权威资料
 
 - [类与特殊成员函数](https://eel.is/c++draft/class)
