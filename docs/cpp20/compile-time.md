@@ -2,8 +2,7 @@
 
 `consteval` 函数必须在编译期求值；`constinit` 保证静态或线程存储期对象进行静态初始化，但不会让对象自动变成常量。C++20 继续扩大 `constexpr` 可执行操作范围。
 
-<!-- example id="cpp20-compile-time" std="c++20" file="main.cpp" kind="single" compilers="all" output="42" -->
-```cpp
+```cpp example id="cpp20-compile-time" std="c++20" file="main.cpp" kind="single" compilers="all" output="42"
 #include <array>
 #include <iostream>
 
@@ -54,8 +53,7 @@ int main() {
 
 `std::is_constant_evaluated()` 让同一个 constexpr 函数区分当前是否正在常量求值，可选择适合编译器解释器的算法和运行期优化实现。
 
-<!-- example id="cpp20-is-constant-evaluated" std="c++20" file="main.cpp" kind="single" compilers="all" output="compile=42, runtime=43" -->
-```cpp
+```cpp example id="cpp20-is-constant-evaluated" std="c++20" file="main.cpp" kind="single" compilers="all" output="compile=42, runtime=43"
 #include <iostream>
 #include <type_traits>
 

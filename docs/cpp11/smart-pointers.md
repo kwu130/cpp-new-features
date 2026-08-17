@@ -93,8 +93,7 @@
 
 下面的完整示例把删除动作和外部计数器绑定，验证删除器恰好执行一次：
 
-<!-- example id="cpp11-unique-ptr-deleter" std="c++11" file="main.cpp" kind="single" compilers="all" output="value=42, deleted=1" -->
-```cpp
+```cpp example id="cpp11-unique-ptr-deleter" std="c++11" file="main.cpp" kind="single" compilers="all" output="value=42, deleted=1"
 #include <iostream>
 #include <memory>
 
@@ -190,8 +189,7 @@ int main() {
 
 下面的示例证明 `shared_from_this()` 返回的新指针与原指针共享同一个控制块：
 
-<!-- example id="cpp11-enable-shared-from-this" std="c++11" file="main.cpp" kind="single" compilers="all" output="owners=2" -->
-```cpp
+```cpp example id="cpp11-enable-shared-from-this" std="c++11" file="main.cpp" kind="single" compilers="all" output="owners=2"
 #include <iostream>
 #include <memory>
 
@@ -254,8 +252,7 @@ C++20 提供 `atomic<shared_ptr<T>>` 专门支持共享指针变量的原子发�
 
 下面的父子关系把父到子定义为强所有权、子到父定义为弱观察。外部所有者离开后，两者都可以释放：
 
-<!-- example id="cpp11-weak-ptr-cycle" std="c++11" file="main.cpp" kind="single" compilers="all" output="parent expired=true" -->
-```cpp
+```cpp example id="cpp11-weak-ptr-cycle" std="c++11" file="main.cpp" kind="single" compilers="all" output="parent expired=true"
 #include <iostream>
 #include <memory>
 
@@ -291,8 +288,7 @@ int main() {
 
 ## 主示例逐步解析
 
-<!-- example id="cpp11-smart-pointers" std="c++11" file="main.cpp" kind="single" compilers="all" output="value=42 owners=2" -->
-```cpp
+```cpp example id="cpp11-smart-pointers" std="c++11" file="main.cpp" kind="single" compilers="all" output="value=42 owners=2"
 #include <iostream>
 #include <memory>
 

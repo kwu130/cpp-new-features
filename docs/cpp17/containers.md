@@ -2,8 +2,7 @@
 
 关联容器加入节点句柄，可在不复制元素的情况下转移节点；`try_emplace` 和 `insert_or_assign` 更明确地区分“缺失时构造”与“存在时覆盖”。
 
-<!-- example id="cpp17-containers" std="c++17" file="main.cpp" kind="single" compilers="all" output="answer=43" -->
-```cpp
+```cpp example id="cpp17-containers" std="c++17" file="main.cpp" kind="single" compilers="all" output="answer=43"
 #include <iostream>
 #include <map>
 #include <string>
@@ -32,8 +31,7 @@ int main() {
 
 节点跨容器转移要求节点类型和分配器兼容。不要假设任意比较器、哈希器或内存资源组合都能零成本合并。
 
-<!-- example id="cpp17-node-insert-conflict" std="c++17" file="main.cpp" kind="single" compilers="all" output="inserted=false, existing=2, recovered=1" -->
-```cpp
+```cpp example id="cpp17-node-insert-conflict" std="c++17" file="main.cpp" kind="single" compilers="all" output="inserted=false, existing=2, recovered=1"
 #include <iostream>
 #include <map>
 #include <string>

@@ -2,8 +2,7 @@
 
 字符转换接口不依赖区域设置、不分配内存，也不通过异常报告普通解析失败，适合高性能协议和文本处理。
 
-<!-- example id="cpp17-charconv" std="c++17" file="main.cpp" kind="single" compilers="all" output="value=42, hex=2a" -->
-```cpp
+```cpp example id="cpp17-charconv" std="c++17" file="main.cpp" kind="single" compilers="all" output="value=42, hex=2a"
 #include <array>
 #include <charconv>
 #include <iostream>
@@ -37,8 +36,7 @@ int main() {
 
 接口只接收裸字符范围，不读取区域设置，也不接受格式流状态。对整数解析，负号只在目标是有符号类型时按规则接受，前导加号不作为普通整数模式的一部分。指定基数 16 时，输入 `0x2a` 不会把 `0x` 当作自动前缀；调用方要先处理协议前缀。
 
-<!-- example id="cpp17-from-chars-prefix" std="c++17" file="main.cpp" kind="single" compilers="all" output="value=42, rest=ms" -->
-```cpp
+```cpp example id="cpp17-from-chars-prefix" std="c++17" file="main.cpp" kind="single" compilers="all" output="value=42, rest=ms"
 #include <charconv>
 #include <iostream>
 #include <string_view>

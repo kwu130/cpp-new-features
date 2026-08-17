@@ -2,8 +2,7 @@
 
 内联变量允许在头文件中定义同一个变量而不违反单一定义规则。嵌套命名空间语法则缩短了多层命名空间声明。
 
-<!-- example id="cpp17-inline-variables" std="c++17" file="main.cpp" kind="single" compilers="all" output="cpp-features:1" -->
-```cpp
+```cpp example id="cpp17-inline-variables" std="c++17" file="main.cpp" kind="single" compilers="all" output="cpp-features:1"
 #include <iostream>
 #include <string_view>
 
@@ -35,8 +34,7 @@ int main() {
 
 内联说明符也可用于变量模板。每个实际特化都是变量实体；`inline` 让头文件中的特化在跨单元 odr-use 时遵守统一定义模型。C++17 标准库大量 `_v` 类型萃取辅助（如 `is_same_v`）正是内联 constexpr 变量模板。
 
-<!-- example id="cpp17-inline-variable-template" std="c++17" file="main.cpp" kind="single" compilers="all" output="pointer=true, value=false" -->
-```cpp
+```cpp example id="cpp17-inline-variable-template" std="c++17" file="main.cpp" kind="single" compilers="all" output="pointer=true, value=false"
 #include <iostream>
 #include <type_traits>
 

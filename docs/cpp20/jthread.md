@@ -2,8 +2,7 @@
 
 `jthread` 析构时自动请求停止并连接线程。若可调用对象首参数接受 `stop_token`，它就能响应协作式取消。
 
-<!-- example id="cpp20-jthread" std="c++20" file="main.cpp" kind="single" compilers="all" output="42" -->
-```cpp
+```cpp example id="cpp20-jthread" std="c++20" file="main.cpp" kind="single" compilers="all" output="42"
 #include <iostream>
 #include <stop_token>
 #include <thread>
@@ -56,8 +55,7 @@ int main() {
 
 `stop_possible()` 区分“当前未请求”与“永远不可能由任何 source 请求”。默认构造的 stop_token 通常没有关联可停止状态；由 jthread 取得的令牌在相应状态存在时可停止。
 
-<!-- example id="cpp20-stop-state" std="c++20" file="main.cpp" kind="single" compilers="all" output="first=true, second=false, callbacks=1" -->
-```cpp
+```cpp example id="cpp20-stop-state" std="c++20" file="main.cpp" kind="single" compilers="all" output="first=true, second=false, callbacks=1"
 #include <iostream>
 #include <stop_token>
 

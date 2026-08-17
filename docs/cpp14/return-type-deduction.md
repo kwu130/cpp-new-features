@@ -2,8 +2,7 @@
 
 C++14 允许普通函数使用 `auto` 推导返回类型。`decltype(auto)` 按 `decltype` 规则保留引用和值类别，适合编写透明包装器。
 
-<!-- example id="cpp14-return-deduction" std="c++14" file="main.cpp" kind="single" compilers="all" output="9" -->
-```cpp
+```cpp example id="cpp14-return-deduction" std="c++14" file="main.cpp" kind="single" compilers="all" output="9"
 #include <iostream>
 #include <type_traits>
 #include <vector>
@@ -46,8 +45,7 @@ int main() {
 
 递归调用只有在函数体前面已经出现可用于推导的 return 后才能形成。把基本情况放在递归调用之前既符合算法结构，也让编译器先确定返回类型。
 
-<!-- example id="cpp14-recursive-return-deduction" std="c++14" file="main.cpp" kind="single" compilers="all" output="factorial=120" -->
-```cpp
+```cpp example id="cpp14-recursive-return-deduction" std="c++14" file="main.cpp" kind="single" compilers="all" output="factorial=120"
 #include <iostream>
 
 constexpr auto factorial(unsigned value) {
@@ -115,8 +113,7 @@ decltype(auto) 主要用于“与这个表达式完全相同”的适配器。�
 
 对于未加括号的变量名，`decltype(name)` 得到变量声明类型；`decltype((name))` 把括号中的名字视为普通左值表达式，得到左值引用。`decltype(auto)` 原样采用这套规则，因此 `return value;` 与 `return (value);` 可能分别返回值和引用。
 
-<!-- example id="cpp14-decltype-auto-parentheses" std="c++14" file="main.cpp" kind="single" compilers="all" output="global=7, copy=9" -->
-```cpp
+```cpp example id="cpp14-decltype-auto-parentheses" std="c++14" file="main.cpp" kind="single" compilers="all" output="global=7, copy=9"
 #include <iostream>
 
 int global_value = 1;

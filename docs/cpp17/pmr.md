@@ -2,8 +2,7 @@
 
 `std::pmr` 把分配策略从容器类型中分离。相同容器类型可在运行期选择单调缓冲区、池资源或自定义资源。
 
-<!-- example id="cpp17-pmr" std="c++17" file="main.cpp" kind="single" compilers="all" output="alpha beta" -->
-```cpp
+```cpp example id="cpp17-pmr" std="c++17" file="main.cpp" kind="single" compilers="all" output="alpha beta"
 #include <array>
 #include <cstddef>
 #include <iostream>
@@ -35,8 +34,7 @@ int main() {
 
 `memory_resource` 接口处理原始存储，不负责构造或析构对象；这层职责由 `polymorphic_allocator` 和容器完成。资源耗尽通常通过 `bad_alloc` 报告，返回空指针不是标准分配器成功协议。自定义实现还要遵守请求为零字节时的合法返回与配对释放要求。
 
-<!-- example id="cpp17-pmr-counting-resource" std="c++17" file="main.cpp" kind="single" compilers="all" output="balanced=true" -->
-```cpp
+```cpp example id="cpp17-pmr-counting-resource" std="c++17" file="main.cpp" kind="single" compilers="all" output="balanced=true"
 #include <cstddef>
 #include <iostream>
 #include <memory_resource>

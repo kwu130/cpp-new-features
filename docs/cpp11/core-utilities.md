@@ -2,8 +2,7 @@
 
 这些能力分别表达异常保证、领域单位、线程独立状态和内存布局要求。
 
-<!-- example id="cpp11-core-utilities" std="c++11" file="main.cpp" kind="single" compilers="all" output="2048 bytes, calls=2" -->
-```cpp
+```cpp example id="cpp11-core-utilities" std="c++11" file="main.cpp" kind="single" compilers="all" output="2048 bytes, calls=2"
 #include <cstddef>
 #include <iostream>
 #include <type_traits>
@@ -109,8 +108,7 @@ C++11 普通 `operator new` 只承诺满足基本最大对齐范围，过度对�
 
 模板包装器的异常保证通常取决于被包装操作。条件 `noexcept(noexcept(expression))` 先在内层查询表达式，再把结果用于外层函数规格。这样类型系统可以准确区分不抛与可能抛出的实例。
 
-<!-- example id="cpp11-conditional-noexcept" std="c++11" file="main.cpp" kind="single" compilers="all" output="safe=true, risky=false" -->
-```cpp
+```cpp example id="cpp11-conditional-noexcept" std="c++11" file="main.cpp" kind="single" compilers="all" output="safe=true, risky=false"
 #include <iostream>
 #include <utility>
 
@@ -141,8 +139,7 @@ int main() {
 
 每个线程第一次访问函数内 `thread_local` 对象时，会初始化自己的实例。同名变量在不同线程有不同地址和状态；主线程也拥有独立实例。线程退出时，已构造的非平凡线程局部对象按实现管理的顺序销毁。
 
-<!-- example id="cpp11-thread-local-isolation" std="c++11" file="main.cpp" kind="single" compilers="all" output="workers=2,2 main=0" -->
-```cpp
+```cpp example id="cpp11-thread-local-isolation" std="c++11" file="main.cpp" kind="single" compilers="all" output="workers=2,2 main=0"
 #include <iostream>
 #include <thread>
 

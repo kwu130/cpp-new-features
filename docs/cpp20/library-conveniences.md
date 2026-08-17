@@ -2,8 +2,7 @@
 
 字符串加入 `starts_with`、`ends_with`，关联容器加入 `contains`，并提供统一的 `erase`/`erase_if`，让常见意图更直接。
 
-<!-- example id="cpp20-library-conveniences" std="c++20" file="main.cpp" kind="single" compilers="all" output="valid=true, remaining=2" -->
-```cpp
+```cpp example id="cpp20-library-conveniences" std="c++20" file="main.cpp" kind="single" compilers="all" output="valid=true, remaining=2"
 #include <iostream>
 #include <map>
 #include <string>
@@ -63,8 +62,7 @@ contains 是 const 查询，但并发安全规则不变：多个只读操作可�
 
 谓词可能按实现需要被调用，不能修改容器结构或依赖固定调用次数。删除大型对象会执行析构和移动，批量操作仍应评估延迟峰值。
 
-<!-- example id="cpp20-erase-count" std="c++20" file="main.cpp" kind="single" compilers="all" output="removed=3, left=2" -->
-```cpp
+```cpp example id="cpp20-erase-count" std="c++20" file="main.cpp" kind="single" compilers="all" output="removed=3, left=2"
 #include <iostream>
 #include <vector>
 

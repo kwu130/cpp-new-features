@@ -2,8 +2,7 @@
 
 `source_location` 以标准方式捕获调用点的文件、行号和函数名，适合日志、断言和诊断接口。
 
-<!-- example id="cpp20-source-location" std="c++20" file="main.cpp" kind="single" compilers="all" output="message=ready, line-positive=true" -->
-```cpp
+```cpp example id="cpp20-source-location" std="c++20" file="main.cpp" kind="single" compilers="all" output="message=ready, line-positive=true"
 #include <iostream>
 #include <source_location>
 #include <string_view>
@@ -41,8 +40,7 @@ int main() {
 
 若 `trace()` 接收默认 location 后调用 `sink(message)` 而不传 location，sink 的默认参数捕获的是 trace 内调用点。要保留最外层调用者，每层包装都应接收并显式转发同一个 location。
 
-<!-- example id="cpp20-source-location-forward" std="c++20" file="main.cpp" kind="single" compilers="all" output="caller-main=true" -->
-```cpp
+```cpp example id="cpp20-source-location-forward" std="c++20" file="main.cpp" kind="single" compilers="all" output="caller-main=true"
 #include <iostream>
 #include <source_location>
 #include <string_view>

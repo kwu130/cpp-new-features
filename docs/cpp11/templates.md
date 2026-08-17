@@ -2,8 +2,7 @@
 
 可变参数模板允许模板接受任意数量的类型或值参数。别名模板用 `using` 为一族类型定义更易读的名称。
 
-<!-- example id="cpp11-variadic-templates" std="c++11" file="main.cpp" kind="single" compilers="all" output="6" -->
-```cpp
+```cpp example id="cpp11-variadic-templates" std="c++11" file="main.cpp" kind="single" compilers="all" output="6"
 #include <iostream>
 #include <memory>
 
@@ -94,8 +93,7 @@ C++11 中通常通过递归展开参数包，并提供终止重载。C++17 的�
 
 参数包与转发引用组合能把任意构造实参传给目标类型，是 make_unique、emplace 等接口的基础。每个参数必须用对应推导类型 forward，不能整体 move。
 
-<!-- example id="cpp11-variadic-forwarding-factory" std="c++11" file="main.cpp" kind="single" compilers="all" output="Ada:37" -->
-```cpp
+```cpp example id="cpp11-variadic-forwarding-factory" std="c++11" file="main.cpp" kind="single" compilers="all" output="Ada:37"
 #include <iostream>
 #include <memory>
 #include <string>
@@ -139,8 +137,7 @@ Args 分别推导字符串字面量引用和 int，展开后的 forward 保留�
 
 C++11 函数实参求值顺序不能用于实现有副作用的左到右遍历。常见方案是把每一步放进初始化列表，因为初始化器元素按顺序求值。额外的首元素保证空参数包时数组仍有合法长度。
 
-<!-- example id="cpp11-ordered-pack-expansion" std="c++11" file="main.cpp" kind="single" compilers="all" output="1 2 3" -->
-```cpp
+```cpp example id="cpp11-ordered-pack-expansion" std="c++11" file="main.cpp" kind="single" compilers="all" output="1 2 3"
 #include <iostream>
 
 template <typename... Values>

@@ -2,8 +2,7 @@
 
 Concepts 为模板参数声明可读、可组合的约束，让重载选择更明确，也能把模板错误定位到接口边界。
 
-<!-- example id="cpp20-concepts" std="c++20" file="main.cpp" kind="single" compilers="all" output="42" -->
-```cpp
+```cpp example id="cpp20-concepts" std="c++20" file="main.cpp" kind="single" compilers="all" output="42"
 #include <concepts>
 #include <iostream>
 
@@ -47,8 +46,7 @@ Concept 是产生布尔常量的命名模板，可由类型萃取、其他 Conce
 
 `requires` 表达式可以检查表达式是否有效、返回类型是否满足 Concept、操作是否 `noexcept`，而不真正执行表达式。它描述的是语法和部分静态性质；诸如“加法满足结合律”这样的语义要求只能由文档和测试约束。
 
-<!-- example id="cpp20-requires-expression" std="c++20" file="main.cpp" kind="single" compilers="all" output="sum=6" -->
-```cpp
+```cpp example id="cpp20-requires-expression" std="c++20" file="main.cpp" kind="single" compilers="all" output="sum=6"
 #include <concepts>
 #include <cstddef>
 #include <iostream>

@@ -2,8 +2,7 @@
 
 C++20 增加年、月、日等日历类型，并标准化时区数据库接口。日期算术可在不手写月份天数的情况下完成。
 
-<!-- example id="cpp20-chrono-calendar" std="c++20" file="main.cpp" kind="single" compilers="all" output="days=2" -->
-```cpp
+```cpp example id="cpp20-chrono-calendar" std="c++20" file="main.cpp" kind="single" compilers="all" output="days=2"
 #include <chrono>
 #include <iostream>
 
@@ -28,8 +27,7 @@ C++20 提供 `year`、`month`、`day` 及其组合。`year_month_day` 便于民�
 
 `year_month`、`month_day`、`month_day_last`、`year_month_day_last` 等组合分别表达不同日历概念。选择最贴近业务的信息量，例如年度循环生日可能不需要 year，而“某月最后一天”应使用 last 类型而不是先猜 31。
 
-<!-- example id="cpp20-chrono-last-day" std="c++20" file="main.cpp" kind="single" compilers="all" output="last=2024-2-29" -->
-```cpp
+```cpp example id="cpp20-chrono-last-day" std="c++20" file="main.cpp" kind="single" compilers="all" output="last=2024-2-29"
 #include <chrono>
 #include <iostream>
 

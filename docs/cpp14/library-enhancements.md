@@ -2,8 +2,7 @@
 
 `shared_timed_mutex` 允许多个读者共享锁或单个写者独占锁，并支持定时等待。`exchange` 用新值替换对象并返回旧值，常用于移动操作和状态机。
 
-<!-- example id="cpp14-library-enhancements" std="c++14" file="main.cpp" kind="single" compilers="all" output="old=1, current=2" -->
-```cpp
+```cpp example id="cpp14-library-enhancements" std="c++14" file="main.cpp" kind="single" compilers="all" output="old=1, current=2"
 #include <iostream>
 #include <mutex>
 #include <shared_mutex>
@@ -80,8 +79,7 @@ steady_clock 截止更适合相对业务超时，system_clock 可能因系统校
 
 `exchange(x, x)` 或让 new_value 引用 object/其子对象时会出现别名与求值语义，先保存旧值后再赋值仍可能从已移动 object 读取。避免自别名，或先在外部构造独立新值。
 
-<!-- example id="cpp14-exchange-move-state" std="c++14" file="main.cpp" kind="single" compilers="all" output="moved=7, source=-1" -->
-```cpp
+```cpp example id="cpp14-exchange-move-state" std="c++14" file="main.cpp" kind="single" compilers="all" output="moved=7, source=-1"
 #include <iostream>
 #include <utility>
 
@@ -132,8 +130,7 @@ int main() {
 
 C++14 标准关联容器支持在比较器透明时用不同于 key_type 的查询类型执行 find/lower_bound 等操作。`std::less<>`（即 `less<void>`）会转发实际参数类型，并声明透明能力，避免为查询临时构造完整键。
 
-<!-- example id="cpp14-heterogeneous-lookup" std="c++14" file="main.cpp" kind="single" compilers="all" output="answer=42" -->
-```cpp
+```cpp example id="cpp14-heterogeneous-lookup" std="c++14" file="main.cpp" kind="single" compilers="all" output="answer=42"
 #include <iostream>
 #include <map>
 #include <string>

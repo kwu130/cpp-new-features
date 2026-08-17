@@ -2,8 +2,7 @@
 
 C++11 可以显式默认或删除特殊成员函数，并通过 `override`、`final` 让继承意图接受编译器检查。委托构造和继承构造减少了重复初始化逻辑，`enum class` 避免枚举值污染外围作用域。
 
-<!-- example id="cpp11-class-improvements" std="c++11" file="main.cpp" kind="single" compilers="all" output="worker:7" -->
-```cpp
+```cpp example id="cpp11-class-improvements" std="c++11" file="main.cpp" kind="single" compilers="all" output="worker:7"
 #include <iostream>
 #include <string>
 
@@ -113,8 +112,7 @@ override/final 是 contextual keyword，只在相应声明位置具有特殊含�
 
 C++11 默认成员初始化器为没有在构造函数列表中显式初始化的成员提供默认值。它与委托构造配合时，可以减少每个构造函数重复写相同默认状态。若构造函数显式初始化某成员，显式项优先。
 
-<!-- example id="cpp11-delegating-enum-class" std="c++11" file="main.cpp" kind="single" compilers="all" output="port=8080, code=2" -->
-```cpp
+```cpp example id="cpp11-delegating-enum-class" std="c++11" file="main.cpp" kind="single" compilers="all" output="port=8080, code=2"
 #include <cstdint>
 #include <iostream>
 

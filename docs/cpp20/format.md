@@ -2,8 +2,7 @@
 
 `std::format` 以类型安全的占位符替代易错的格式化字符串和冗长的流状态设置。
 
-<!-- example id="cpp20-format" std="c++20" file="main.cpp" kind="single" compilers="all" output="20 + 22 = 42" -->
-```cpp
+```cpp example id="cpp20-format" std="c++20" file="main.cpp" kind="single" compilers="all" output="20 + 22 = 42"
 #include <format>
 #include <iostream>
 
@@ -22,8 +21,7 @@ int main() {
 
 字段的一般结构可理解为 `{arg-id:format-spec}`。arg-id 为空时按出现顺序自动编号；显式编号可复用或重排参数，但同一格式字符串不能混合自动编号与手动编号。冒号后规则由对应参数 formatter 解释。
 
-<!-- example id="cpp20-format-specifiers" std="c++20" file="main.cpp" kind="single" compilers="all" output="hex=002a, fixed=3.50" -->
-```cpp
+```cpp example id="cpp20-format-specifiers" std="c++20" file="main.cpp" kind="single" compilers="all" output="hex=002a, fixed=3.50"
 #include <format>
 #include <iostream>
 

@@ -2,8 +2,7 @@
 
 协程允许函数挂起并稍后恢复，是生成器、异步任务和流式处理的底层语言机制。标准提供协程协议，但不直接提供通用任务类型。
 
-<!-- example id="cpp20-coroutines" std="c++20" file="main.cpp" kind="single" compilers="all" output="1 2 3" -->
-```cpp
+```cpp example id="cpp20-coroutines" std="c++20" file="main.cpp" kind="single" compilers="all" output="1 2 3"
 #include <coroutine>
 #include <exception>
 #include <iostream>
@@ -128,8 +127,7 @@ awaitable 到 awaiter 的转换可能先经过 Promise 的 `await_transform`，�
 
 若 Promise 定义 `await_transform`，一般等待表达式会先被它转换；随后才考虑成员/非成员 `operator co_await` 或对象自身 awaiter 协议。框架可借此注入调度、取消检查和追踪，但过宽的 catch-all 转换会改变第三方 awaitable 的含义，应保留受约束的透传路径。
 
-<!-- example id="cpp20-manual-coroutine-resume" std="c++20" file="main.cpp" kind="single" compilers="all" output="before after" -->
-```cpp
+```cpp example id="cpp20-manual-coroutine-resume" std="c++20" file="main.cpp" kind="single" compilers="all" output="before after"
 #include <coroutine>
 #include <exception>
 #include <iostream>

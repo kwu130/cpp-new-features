@@ -2,8 +2,7 @@
 
 C++17 在若干纯右值初始化场景中保证对象直接构造到最终存储位置，即使类型不能复制也不能移动，代码仍然合法。
 
-<!-- example id="cpp17-copy-elision" std="c++17" file="main.cpp" kind="single" compilers="all" output="token=42" -->
-```cpp
+```cpp example id="cpp17-copy-elision" std="c++17" file="main.cpp" kind="single" compilers="all" output="token=42"
 #include <iostream>
 
 class Token {
@@ -47,8 +46,7 @@ C++17 不只是“要求编译器做一次优化”，而是重新规定许多�
 
 常见保证场景包括用同类型纯右值初始化对象，以及函数 `return` 表达式是与返回类型匹配的纯右值。这里“同类型”会忽略顶层 cv 限定，但不能把基类子对象、委托构造等可能发生存储重叠的场景一概当作保证目标。
 
-<!-- example id="cpp17-prvalue-branches" std="c++17" file="main.cpp" kind="single" compilers="all" output="selected=2" -->
-```cpp
+```cpp example id="cpp17-prvalue-branches" std="c++17" file="main.cpp" kind="single" compilers="all" output="selected=2"
 #include <iostream>
 
 class Selection {

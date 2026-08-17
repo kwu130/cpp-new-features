@@ -2,8 +2,7 @@
 
 `latch` 是一次性倒计数门闩，`barrier` 支持重复阶段同步，`semaphore` 管理有限数量的许可。
 
-<!-- example id="cpp20-synchronization" std="c++20" file="main.cpp" kind="single" compilers="all" output="42" -->
-```cpp
+```cpp example id="cpp20-synchronization" std="c++20" file="main.cpp" kind="single" compilers="all" output="42"
 #include <barrier>
 #include <iostream>
 #include <latch>
@@ -63,8 +62,7 @@ completion 的结束是阶段切换的一部分。它可以汇总本阶段结果
 
 `arrive_and_drop` 同时完成当前阶段到达并永久减少后续期望数，适合工作者退出。若所有参与者逐步 drop，必须确认实现允许的期望计数和后续对象使用规则；不能让仍运行的代码继续假定原固定团队存在。
 
-<!-- example id="cpp20-barrier-phases" std="c++20" file="main.cpp" kind="single" compilers="all" output="phases=3" -->
-```cpp
+```cpp example id="cpp20-barrier-phases" std="c++20" file="main.cpp" kind="single" compilers="all" output="phases=3"
 #include <barrier>
 #include <iostream>
 #include <thread>

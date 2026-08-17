@@ -2,8 +2,7 @@
 
 `apply` 把元组展开为函数实参，`invoke` 以统一语法调用普通函数、函数对象和成员指针。
 
-<!-- example id="cpp17-invoke-apply" std="c++17" file="main.cpp" kind="single" compilers="all" output="42" -->
-```cpp
+```cpp example id="cpp17-invoke-apply" std="c++17" file="main.cpp" kind="single" compilers="all" output="42"
 #include <functional>
 #include <iostream>
 #include <tuple>
@@ -34,8 +33,7 @@ int main() {
 
 成员函数指针需要一个“对象实参”，该实参可以是对象/派生对象、`reference_wrapper`，或可解引用后得到合适对象的指针式类型。成员数据指针采用同一对象解析规则，但结果是成员访问表达式而不是函数调用。
 
-<!-- example id="cpp17-invoke-member-data" std="c++17" file="main.cpp" kind="single" compilers="all" output="before=7, after=9" -->
-```cpp
+```cpp example id="cpp17-invoke-member-data" std="c++17" file="main.cpp" kind="single" compilers="all" output="before=7, after=9"
 #include <functional>
 #include <iostream>
 #include <type_traits>

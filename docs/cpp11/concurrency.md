@@ -2,8 +2,7 @@
 
 C++11 首次提供跨平台线程、同步原语、任务结果和原子操作，使并发代码不再依赖平台 API。
 
-<!-- example id="cpp11-concurrency" std="c++11" file="main.cpp" kind="single" compilers="all" output="total=42, doubled=42" -->
-```cpp
+```cpp example id="cpp11-concurrency" std="c++11" file="main.cpp" kind="single" compilers="all" output="total=42, doubled=42"
 #include <atomic>
 #include <future>
 #include <iostream>
@@ -147,8 +146,7 @@ release/acquire 必须通过同一原子上的值读取关系连接，两个“�
 
 共享谓词必须由同一互斥量保护。生产者持锁修改状态，解锁后或解锁前通知；消费者通过带谓词的 `wait` 重复检查条件。通知可以合并或早于等待发生，真正不会丢失的是受锁保护的状态。
 
-<!-- example id="cpp11-condition-variable-queue" std="c++11" file="main.cpp" kind="single" compilers="all" output="value=42" -->
-```cpp
+```cpp example id="cpp11-condition-variable-queue" std="c++11" file="main.cpp" kind="single" compilers="all" output="value=42"
 #include <condition_variable>
 #include <iostream>
 #include <mutex>
@@ -182,8 +180,7 @@ int main() {
 
 原子状态可以发布此前对普通内存的写入。生产者先写数据，再以 release 存储状态；消费者以 acquire 读取到该状态后，可以看见之前的数据。这要求 acquire 确实读取 release 序列中的值。
 
-<!-- example id="cpp11-release-acquire" std="c++11" file="main.cpp" kind="single" compilers="all" output="published=42" -->
-```cpp
+```cpp example id="cpp11-release-acquire" std="c++11" file="main.cpp" kind="single" compilers="all" output="published=42"
 #include <atomic>
 #include <iostream>
 #include <thread>

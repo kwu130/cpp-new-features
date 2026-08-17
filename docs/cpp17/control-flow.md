@@ -2,8 +2,7 @@
 
 结构化绑定可以为数组、元组和类似结构体的成员命名。`if`/`switch` 初始化语句缩短临时对象作用域，`if constexpr` 则在编译期丢弃不适用分支。
 
-<!-- example id="cpp17-control-flow" std="c++17" file="main.cpp" kind="single" compilers="all" output="answer=42" -->
-```cpp
+```cpp example id="cpp17-control-flow" std="c++17" file="main.cpp" kind="single" compilers="all" output="answer=42"
 #include <iostream>
 #include <map>
 #include <string>
@@ -49,8 +48,7 @@ int main() {
 
 用户类型可以通过 `tuple_size`、`tuple_element<I, T>` 和可由成员查找或 ADL 找到的 `get<I>` 参与元组式分解。普通非限定名称查找不会替代协议规定的查找过程，因此 `get` 应与类型位于同一命名空间，或者作为成员模板提供。
 
-<!-- example id="cpp17-custom-structured-binding" std="c++17" file="main.cpp" kind="single" compilers="all" output="rgb=10,25,30" -->
-```cpp
+```cpp example id="cpp17-custom-structured-binding" std="c++17" file="main.cpp" kind="single" compilers="all" output="rgb=10,25,30"
 #include <cstddef>
 #include <iostream>
 #include <tuple>

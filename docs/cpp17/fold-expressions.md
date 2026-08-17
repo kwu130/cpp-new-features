@@ -2,8 +2,7 @@
 
 折叠表达式用一个运算符归约参数包，取代 C++11 中常见的递归模板和展开技巧。
 
-<!-- example id="cpp17-fold-expressions" std="c++17" file="main.cpp" kind="single" compilers="all" output="10" -->
-```cpp
+```cpp example id="cpp17-fold-expressions" std="c++17" file="main.cpp" kind="single" compilers="all" output="10"
 #include <iostream>
 
 template <typename... Values>
@@ -34,8 +33,7 @@ int main() {
 
 二元折叠两侧出现的运算符必须相同，并且只有一侧能包含未展开参数包。初始表达式不是包的额外元素语法糖，它明确位于最终表达式树的一端：二元左折叠把初值放在最左侧，二元右折叠把初值放在最右侧。
 
-<!-- example id="cpp17-fold-direction" std="c++17" file="main.cpp" kind="single" compilers="all" output="left=15, right=19" -->
-```cpp
+```cpp example id="cpp17-fold-direction" std="c++17" file="main.cpp" kind="single" compilers="all" output="left=15, right=19"
 #include <iostream>
 
 template <typename... Values>

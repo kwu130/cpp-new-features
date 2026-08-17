@@ -34,11 +34,11 @@
 
 ## 示例约定
 
-每个 `cpp` 围栏前必须紧邻一行示例元数据：
+每个 `cpp` 围栏的起始行必须在语言标识后携带 `example` 元数据：
 
-```text
-<!-- example id="unique-id" std="c++17" file="main.cpp" kind="single" compilers="all" output="expected output" -->
-```
+起始行：```` ```cpp example id="unique-id" std="c++17" file="main.cpp" kind="single" compilers="all" output="expected output" ````
+
+元数据位于 Markdown 围栏信息字符串中，渲染时不会进入正文；`cpp` 必须保持为第一个字段，以便渲染器继续识别 C++ 语法高亮。旧的 HTML 注释元数据仅由验证器兼容读取，不得用于新增或修改的示例。
 
 - `id` 在仓库内唯一；多文件示例通过相同 ID 和不同 `file` 组成一组。
 - `std` 只能是 `c++11`、`c++14`、`c++17` 或 `c++20`。

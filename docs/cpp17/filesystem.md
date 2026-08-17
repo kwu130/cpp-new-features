@@ -2,8 +2,7 @@
 
 `<filesystem>` 提供路径拼接、目录遍历和文件状态等跨平台接口，避免手写字符串路径与平台 API。
 
-<!-- example id="cpp17-filesystem" std="c++17" file="main.cpp" kind="single" compilers="all" output="report.txt" -->
-```cpp
+```cpp example id="cpp17-filesystem" std="c++17" file="main.cpp" kind="single" compilers="all" output="report.txt"
 #include <filesystem>
 #include <iostream>
 
@@ -22,8 +21,7 @@ int main() {
 
 词法操作只处理字符结构，不访问文件系统。`lexically_normal` 可以消除可判定的 `.`、`..` 片段，但不会解析符号链接；`canonical` 会访问文件系统并要求路径存在。安全检查不能只做字符串前缀比较，因为规范化、符号链接和大小写规则可能改变真实目标。
 
-<!-- example id="cpp17-filesystem-lexical" std="c++17" file="main.cpp" kind="single" compilers="all" output="reports/daily.txt|.txt" -->
-```cpp
+```cpp example id="cpp17-filesystem-lexical" std="c++17" file="main.cpp" kind="single" compilers="all" output="reports/daily.txt|.txt"
 #include <filesystem>
 #include <iostream>
 

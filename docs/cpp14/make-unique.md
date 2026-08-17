@@ -2,8 +2,7 @@
 
 `make_unique` 补齐了 C++11 智能指针工厂：它直接构造对象并返回 `unique_ptr`，避免显式出现 `new`。
 
-<!-- example id="cpp14-make-unique" std="c++14" file="main.cpp" kind="single" compilers="all" output="Ada:37" -->
-```cpp
+```cpp example id="cpp14-make-unique" std="c++14" file="main.cpp" kind="single" compilers="all" output="Ada:37"
 #include <iostream>
 #include <memory>
 #include <string>
@@ -57,8 +56,7 @@ C++14 支持 `make_unique<T[]>(size)` 创建动态数组并进行值初始化，
 
 数组重载只接收元素数量，不接收逐元素构造参数。对类类型数组，它要求元素能够被无参初始化；若每个元素需要不同构造参数，应使用 `vector`、显式循环或更贴近业务含义的容器工厂。返回的 `unique_ptr<T[]>` 使用 `delete[]`，并提供下标运算符，但不记录长度，也不提供 `begin()`/`end()`。
 
-<!-- example id="cpp14-make-unique-array" std="c++14" file="main.cpp" kind="single" compilers="all" output="size=4, sum=100" -->
-```cpp
+```cpp example id="cpp14-make-unique-array" std="c++14" file="main.cpp" kind="single" compilers="all" output="size=4, sum=100"
 #include <cstddef>
 #include <iostream>
 #include <memory>

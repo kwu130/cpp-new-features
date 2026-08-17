@@ -30,8 +30,7 @@
 
 下面的最小程序同时用于验证文档示例链路：
 
-<!-- example id="repository-smoke-test" std="c++11" file="main.cpp" kind="single" compilers="all" output="documentation ready" -->
-```cpp
+```cpp example id="repository-smoke-test" std="c++11" file="main.cpp" kind="single" compilers="all" output="documentation ready"
 #include <iostream>
 
 int main() {

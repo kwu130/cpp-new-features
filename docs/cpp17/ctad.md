@@ -2,8 +2,7 @@
 
 类模板实参推导（CTAD）根据构造实参和推导指引推断模板参数，减少重复类型书写。
 
-<!-- example id="cpp17-ctad" std="c++17" file="main.cpp" kind="single" compilers="all" output="items=3" -->
-```cpp
+```cpp example id="cpp17-ctad" std="c++17" file="main.cpp" kind="single" compilers="all" output="items=3"
 #include <iostream>
 #include <string>
 #include <tuple>
@@ -51,8 +50,7 @@ CTAD 只省略类模板实参，不会把类模板变成普通类型。自定义
 
 另一个典型场景是构造函数接收迭代器，而类模板参数应是迭代器的元素类型。构造函数模板本身只能推导 `Iterator`，无法反向得出类的 `T`；显式指引可以通过 `iterator_traits` 写出这层映射。
 
-<!-- example id="cpp17-ctad-iterator-guide" std="c++17" file="main.cpp" kind="single" compilers="all" output="count=3, sum=6" -->
-```cpp
+```cpp example id="cpp17-ctad-iterator-guide" std="c++17" file="main.cpp" kind="single" compilers="all" output="count=3, sum=6"
 #include <cstddef>
 #include <iostream>
 #include <iterator>

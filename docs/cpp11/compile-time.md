@@ -2,8 +2,7 @@
 
 `constexpr` 允许值在满足条件时参与编译期计算，`static_assert` 用于在编译期验证不变量。
 
-<!-- example id="cpp11-compile-time" std="c++11" file="main.cpp" kind="single" compilers="all" output="120" -->
-```cpp
+```cpp example id="cpp11-compile-time" std="c++11" file="main.cpp" kind="single" compilers="all" output="120"
 #include <iostream>
 
 constexpr unsigned factorial(unsigned value) {
@@ -86,8 +85,7 @@ C++11 语法要求第二个字符串字面量消息；省略消息是 C++17 才�
 
 自定义类型要进入常量表达式，必须满足对应版本的字面类型要求，并通过 `constexpr` 构造函数初始化所有成员。C++11 构造函数体限制很严，通常把计算放在成员初始化列表或其他 constexpr 函数中。
 
-<!-- example id="cpp11-constexpr-value-object" std="c++11" file="main.cpp" kind="single" compilers="all" output="area=12" -->
-```cpp
+```cpp example id="cpp11-constexpr-value-object" std="c++11" file="main.cpp" kind="single" compilers="all" output="area=12"
 #include <iostream>
 
 class Rectangle {

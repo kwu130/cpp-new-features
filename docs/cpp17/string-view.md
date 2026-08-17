@@ -2,8 +2,7 @@
 
 `string_view` 是不拥有字符数据的轻量视图，适合只读参数、解析切片和避免临时字符串分配。
 
-<!-- example id="cpp17-string-view" std="c++17" file="main.cpp" kind="single" compilers="all" output="cpp17" -->
-```cpp
+```cpp example id="cpp17-string-view" std="c++17" file="main.cpp" kind="single" compilers="all" output="cpp17"
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -40,8 +39,7 @@ int main() {
 
 许多观察和切片操作在 C++17 已是 `constexpr`，所以固定协议关键字可以在常量求值中比较或切片。不过字符数据仍必须在相应求值环境中可访问，`string_view` 也不会因此获得所有权。
 
-<!-- example id="cpp17-string-view-consume" std="c++17" file="main.cpp" kind="single" compilers="all" output="payload=42" -->
-```cpp
+```cpp example id="cpp17-string-view-consume" std="c++17" file="main.cpp" kind="single" compilers="all" output="payload=42"
 #include <iostream>
 #include <string_view>
 

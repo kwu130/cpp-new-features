@@ -2,8 +2,7 @@
 
 指定初始化用成员名初始化聚合对象，配置结构体因此更易读，也不再依赖读者记住每个值的位置。
 
-<!-- example id="cpp20-designated-initialization" std="c++20" file="main.cpp" kind="single" compilers="all" output="localhost:8080 secure=false" -->
-```cpp
+```cpp example id="cpp20-designated-initialization" std="c++20" file="main.cpp" kind="single" compilers="all" output="localhost:8080 secure=false"
 #include <iostream>
 #include <string>
 
@@ -32,8 +31,7 @@ C++20 要求指示符遵循成员声明顺序，且只适用于聚合类型；�
 
 每个指示符必须命名当前类的直接非静态数据成员，不能指定基类成员、嵌套路径或同一成员两次。未指定成员按默认成员初始化器初始化，否则执行空列表初始化。
 
-<!-- example id="cpp20-nested-designated-init" std="c++20" file="main.cpp" kind="single" compilers="all" output="api.example:80 verify=true" -->
-```cpp
+```cpp example id="cpp20-nested-designated-init" std="c++20" file="main.cpp" kind="single" compilers="all" output="api.example:80 verify=true"
 #include <iostream>
 #include <string>
 

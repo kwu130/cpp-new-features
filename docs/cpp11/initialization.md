@@ -2,8 +2,7 @@
 
 花括号初始化为对象、容器和聚合类型提供统一写法，并阻止部分窄化转换。`nullptr` 则替代了容易与整数混淆的 `0` 和 `NULL`。
 
-<!-- example id="cpp11-initialization" std="c++11" file="main.cpp" kind="single" compilers="all" output="3 points, first=1" -->
-```cpp
+```cpp example id="cpp11-initialization" std="c++11" file="main.cpp" kind="single" compilers="all" output="3 points, first=1"
 #include <cstddef>
 #include <initializer_list>
 #include <iostream>
@@ -109,8 +108,7 @@ nullptr 也能转换为空成员指针。成员指针表示可能与普通数据
 
 空列表还有特殊性：若类型拥有默认构造函数，`T{}` 通常优先执行值初始化而不是把空列表传给 `initializer_list` 构造函数。阅读重载集合时必须结合完整初始化形式，而不是只数参数个数。
 
-<!-- example id="cpp11-list-overload-nullptr" std="c++11" file="main.cpp" kind="single" compilers="all" output="list=2, pointer" -->
-```cpp
+```cpp example id="cpp11-list-overload-nullptr" std="c++11" file="main.cpp" kind="single" compilers="all" output="list=2, pointer"
 #include <cstddef>
 #include <initializer_list>
 #include <iostream>

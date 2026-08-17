@@ -2,8 +2,7 @@
 
 `chrono` 提供带单位的时间类型，`<random>` 将随机引擎与分布分离，正则库用于模式匹配。
 
-<!-- example id="cpp11-utility-libraries" std="c++11" file="main.cpp" kind="single" compilers="all" output="valid=true, seconds=2" -->
-```cpp
+```cpp example id="cpp11-utility-libraries" std="c++11" file="main.cpp" kind="single" compilers="all" output="valid=true, seconds=2"
 #include <chrono>
 #include <iostream>
 #include <random>
@@ -104,8 +103,7 @@ chrono 类型大多是零开销数值包装，转换常在编译期化简比例�
 
 `duration_cast` 在目标周期更粗时会截断，不进行四舍五入。负持续时间的截断方向同样应通过类型转换规则确认。C++17 才加入标准 `floor`、`ceil`、`round` 时间工具，C++11 代码需要显式定义业务舍入策略。
 
-<!-- example id="cpp11-chrono-units" std="c++11" file="main.cpp" kind="single" compilers="all" output="milliseconds=2500, seconds=2" -->
-```cpp
+```cpp example id="cpp11-chrono-units" std="c++11" file="main.cpp" kind="single" compilers="all" output="milliseconds=2500, seconds=2"
 #include <chrono>
 #include <iostream>
 
@@ -124,8 +122,7 @@ int main() {
 
 引擎序列由标准算法定义，但分布如何把引擎输出映射到结果在不同实现间不必产生相同序列。因此跨标准库测试不应断言 `uniform_int_distribution` 的某个具体首值；应检查范围、统计性质或把分布封装在项目固定算法中。
 
-<!-- example id="cpp11-random-range" std="c++11" file="main.cpp" kind="single" compilers="all" output="all-in-range=true" -->
-```cpp
+```cpp example id="cpp11-random-range" std="c++11" file="main.cpp" kind="single" compilers="all" output="all-in-range=true"
 #include <iostream>
 #include <random>
 
@@ -149,8 +146,7 @@ cmatch 对 C 字符指针迭代器，smatch 对 string::const_iterator，使用�
 
 正则对象的 const 匹配是否可多线程共享需结合标准库线程安全一般规则：多个线程只读同一对象通常可行，但 match_results 必须每次独立，不能共享可变结果。
 
-<!-- example id="cpp11-regex-captures" std="c++11" file="main.cpp" kind="single" compilers="all" output="name=cpp, version=11" -->
-```cpp
+```cpp example id="cpp11-regex-captures" std="c++11" file="main.cpp" kind="single" compilers="all" output="name=cpp, version=11"
 #include <iostream>
 #include <regex>
 #include <string>

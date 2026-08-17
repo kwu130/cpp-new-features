@@ -2,8 +2,7 @@
 
 C++17 允许 `auto` 非类型模板参数，并标准化了 `[[nodiscard]]`、`[[maybe_unused]]` 和 `[[fallthrough]]` 等常用属性。
 
-<!-- example id="cpp17-templates-attributes" std="c++17" file="main.cpp" kind="single" compilers="all" output="medium" -->
-```cpp
+```cpp example id="cpp17-templates-attributes" std="c++17" file="main.cpp" kind="single" compilers="all" output="medium"
 #include <iostream>
 #include <string>
 
@@ -39,8 +38,7 @@ int main() {
 
 推导遵循模板实参的类型规则，而不是先统一转成某个最大整数类型。`value<1>`、`value<1L>` 和 `value<'\1'>` 的参数类型不同，因而可以选择不同特化或重载。`decltype(Value)` 能在模板体内取得被推导的确切类型。
 
-<!-- example id="cpp17-auto-nttp-types" std="c++17" file="main.cpp" kind="single" compilers="all" output="int=42, char=A" -->
-```cpp
+```cpp example id="cpp17-auto-nttp-types" std="c++17" file="main.cpp" kind="single" compilers="all" output="int=42, char=A"
 #include <iostream>
 #include <type_traits>
 

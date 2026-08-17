@@ -2,8 +2,7 @@
 
 范围 `for` 直接遍历数组或提供 `begin`/`end` 的对象，消除了手写迭代器边界的样板代码。
 
-<!-- example id="cpp11-range-for" std="c++11" file="main.cpp" kind="single" compilers="all" output="2 4 6" -->
-```cpp
+```cpp example id="cpp11-range-for" std="c++11" file="main.cpp" kind="single" compilers="all" output="2 4 6"
 #include <iostream>
 #include <vector>
 
@@ -92,8 +91,7 @@ C++11 概念展开中的 begin 与 end 常在同一声明中推导，因而要�
 
 C++11 展开中开始和结束迭代器需要能以同一 `auto` 声明形式表示；C++17 放宽为不同类型，为哨兵范围铺路。编写以 C++11 为最低版本的类型时，不应依赖异构 sentinel。
 
-<!-- example id="cpp11-custom-range" std="c++11" file="main.cpp" kind="single" compilers="all" output="sum=10" -->
-```cpp
+```cpp example id="cpp11-custom-range" std="c++11" file="main.cpp" kind="single" compilers="all" output="sum=10"
 #include <cstddef>
 #include <iostream>
 

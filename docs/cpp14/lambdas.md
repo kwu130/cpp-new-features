@@ -2,8 +2,7 @@
 
 泛型 Lambda 可以用 `auto` 声明参数，本质上生成带模板调用运算符的闭包。初始化捕获允许在捕获列表中创建成员，尤其适合把只移动对象交给回调。
 
-<!-- example id="cpp14-lambdas" std="c++14" file="main.cpp" kind="single" compilers="all" output="42" -->
-```cpp
+```cpp example id="cpp14-lambdas" std="c++14" file="main.cpp" kind="single" compilers="all" output="42"
 #include <iostream>
 #include <memory>
 
@@ -28,8 +27,7 @@ C++11 Lambda 的参数类型固定，想对不同数值类型复用逻辑需要�
 
 参数中的 `auto` 可以配合 `const`、引用和转发引用规则：`const auto&` 接受任意只读对象而不复制，`auto&` 只接收左值，`auto&&` 在泛型 Lambda 中会按实参值类别推导，具有与函数模板转发引用相同的折叠行为。
 
-<!-- example id="cpp14-generic-lambda-forwarding" std="c++14" file="main.cpp" kind="single" compilers="all" output="lvalue rvalue" -->
-```cpp
+```cpp example id="cpp14-generic-lambda-forwarding" std="c++14" file="main.cpp" kind="single" compilers="all" output="lvalue rvalue"
 #include <iostream>
 #include <string>
 #include <utility>
@@ -103,8 +101,7 @@ C++14 的泛型适配器如果要进入复杂重载集，常把合法性表达�
 
 返回类型仍由每次实例化单独推导，因此某个参数组合合法不代表所有组合都合法。操作符 `+` 对整数表示算术，对字符串表示拼接；Concepts 出现前，泛型 Lambda 很难在声明处直接表达这种语义约束。
 
-<!-- example id="cpp14-generic-lambda-instances" std="c++14" file="main.cpp" kind="single" compilers="all" output="sum=42, text=cpp14" -->
-```cpp
+```cpp example id="cpp14-generic-lambda-instances" std="c++14" file="main.cpp" kind="single" compilers="all" output="sum=42, text=cpp14"
 #include <iostream>
 #include <string>
 

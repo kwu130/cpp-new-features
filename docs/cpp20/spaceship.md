@@ -2,8 +2,7 @@
 
 `<=>` 一次表达小于、等于和大于关系。编译器可据此重写常见比较表达式，并为成员逐项生成一致的默认比较。
 
-<!-- example id="cpp20-spaceship" std="c++20" file="main.cpp" kind="single" compilers="all" output="older=true, same=true" -->
-```cpp
+```cpp example id="cpp20-spaceship" std="c++20" file="main.cpp" kind="single" compilers="all" output="older=true, same=true"
 #include <compare>
 #include <iostream>
 #include <string>
@@ -41,8 +40,7 @@ int main() {
 
 标准还提供 `common_comparison_category_t<Ts...>` 计算多个子比较结果能共同转换到的最强类别；默认比较的推导可理解为沿类似规则从成员结果求共同类别。任何一个偏序成员都会让整体无法诚实地保持强序。
 
-<!-- example id="cpp20-partial-ordering" std="c++20" file="main.cpp" kind="single" compilers="all" output="unordered=true" -->
-```cpp
+```cpp example id="cpp20-partial-ordering" std="c++20" file="main.cpp" kind="single" compilers="all" output="unordered=true"
 #include <compare>
 #include <iostream>
 #include <limits>

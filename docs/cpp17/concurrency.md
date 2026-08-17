@@ -2,8 +2,7 @@
 
 `scoped_lock` 可以一次安全锁定多个互斥量，降低锁顺序不一致造成死锁的风险。`shared_mutex` 提供共享读与独占写。
 
-<!-- example id="cpp17-concurrency" std="c++17" file="main.cpp" kind="single" compilers="all" output="left=1, right=2" -->
-```cpp
+```cpp example id="cpp17-concurrency" std="c++17" file="main.cpp" kind="single" compilers="all" output="left=1, right=2"
 #include <iostream>
 #include <mutex>
 #include <shared_mutex>
@@ -33,8 +32,7 @@ int main() {
 
 它是不可复制的 RAII 所有者，通常让作用域直接表达临界区。单互斥量时效果类似 `lock_guard`；多锁时不要在外部预先锁住其中一把，除非使用明确的采用锁协议。
 
-<!-- example id="cpp17-scoped-lock-opposite-order" std="c++17" file="main.cpp" kind="single" compilers="all" output="left=2000, right=2000" -->
-```cpp
+```cpp example id="cpp17-scoped-lock-opposite-order" std="c++17" file="main.cpp" kind="single" compilers="all" output="left=2000, right=2000"
 #include <iostream>
 #include <mutex>
 #include <thread>

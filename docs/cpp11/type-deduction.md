@@ -10,8 +10,7 @@
 - `decltype(name)` 对未加括号的变量名给出声明类型。
 - `decltype((expression))` 根据表达式值类别可能得到引用类型。
 
-<!-- example id="cpp11-type-deduction" std="c++11" file="main.cpp" kind="single" compilers="all" output="6" -->
-```cpp
+```cpp example id="cpp11-type-deduction" std="c++11" file="main.cpp" kind="single" compilers="all" output="6"
 #include <iostream>
 #include <type_traits>
 #include <vector>
@@ -127,8 +126,7 @@ decltype 操作数通常不求值，所以可写 `decltype(f(std::declval<T>()))
 
 C++11 常用尾置返回 `auto function(args) -> decltype(expression)`，因为参数名在箭头处已进入作用域，能表达依赖参数的结果类型。C++14 才允许普通函数体 auto 返回推导，decltype(auto) 也属后续特性。
 
-<!-- example id="cpp11-auto-decltype-arrays" std="c++11" file="main.cpp" kind="single" compilers="all" output="length=3, first=9" -->
-```cpp
+```cpp example id="cpp11-auto-decltype-arrays" std="c++11" file="main.cpp" kind="single" compilers="all" output="length=3, first=9"
 #include <cstddef>
 #include <iostream>
 #include <type_traits>

@@ -2,8 +2,7 @@
 
 `tuple` 表示固定数量的异构值；类型萃取支持编译期类型查询与转换；`function` 提供统一的类型擦除调用接口。
 
-<!-- example id="cpp11-functional-tools" std="c++11" file="main.cpp" kind="single" compilers="all" output="Ada:42" -->
-```cpp
+```cpp example id="cpp11-functional-tools" std="c++11" file="main.cpp" kind="single" compilers="all" output="Ada:42"
 #include <functional>
 #include <iostream>
 #include <string>
@@ -79,8 +78,7 @@ C++11 萃取大致分为查询型（is_*）、关系型（is_same/is_base_of/is_
 
 `bind` 创建一个保存函数和绑定参数的函数对象，占位符决定调用时参数插入位置。默认会复制绑定值；要绑定引用必须使用 `std::ref`。嵌套 `bind` 和重载函数常导致类型推导难读，现代代码优先使用 Lambda 明确写出捕获与调用。
 
-<!-- example id="cpp11-bind-reference" std="c++11" file="main.cpp" kind="single" compilers="all" output="value=42" -->
-```cpp
+```cpp example id="cpp11-bind-reference" std="c++11" file="main.cpp" kind="single" compilers="all" output="value=42"
 #include <functional>
 #include <iostream>
 
@@ -113,8 +111,7 @@ int main() {
 
 `enable_if` 根据编译期布尔条件是否存在成员 `type`，利用替换失败从候选集合移除函数模板。它适合 C++11 库实现兼容性，但条件出现在返回类型时可能让诊断难读；应把约束封装成有名称的萃取。
 
-<!-- example id="cpp11-type-traits-dispatch" std="c++11" file="main.cpp" kind="single" compilers="all" output="integer floating" -->
-```cpp
+```cpp example id="cpp11-type-traits-dispatch" std="c++11" file="main.cpp" kind="single" compilers="all" output="integer floating"
 #include <iostream>
 #include <type_traits>
 

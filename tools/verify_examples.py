@@ -14,7 +14,7 @@ from pathlib import Path
 
 
 META_RE = re.compile(r'^\s*<!--\s*example\s+(.+?)\s*-->\s*$')
-FENCE_RE = re.compile(r'^\s*```(\S*)\s*$')
+FENCE_RE = re.compile(r'^\s*```([^\s`]*)?(?:\s+(.*?))?\s*$')
 LINK_RE = re.compile(r'(?<!!)(?<!`)\[[^\]]+\]\(([^)]+)\)')
 VALID_STANDARDS = {"c++11", "c++14", "c++17", "c++20"}
 
@@ -102,7 +102,10 @@ def collect_examples(root: Path, selected: str | None) -> list[Example]:
                     pending = None
                 index += 1
                 continue
-            language = fence_match.group(1)
+            language = fence_match.group(1) or ""
+            fence_info = fence_match.group(2)
+            if fence_info is not None:
+                fence_info = fence_info.strip() or None
             fence_line = index + 1
             index += 1
             body: list[str] = []
@@ -115,9 +118,24 @@ def collect_examples(root: Path, selected: str | None) -> list[Example]:
             if language != "cpp":
                 pending = None
                 continue
-            if pending is None:
-                raise VerificationError(f"{path}:{fence_line}: cpp fence has no adjacent example metadata")
-            metadata, meta_line = pending
+            inline_metadata: dict[str, str] | None = None
+            if fence_info is not None:
+                marker, separator, raw_metadata = fence_info.partition(" ")
+                if marker != "example" or not separator or not raw_metadata.strip():
+                    raise VerificationError(
+                        f"{path}:{fence_line}: invalid cpp fence info; expected 'example key=value ...'"
+                    )
+                inline_metadata = parse_metadata(raw_metadata, path, fence_line)
+            if pending is not None and inline_metadata is not None:
+                raise VerificationError(
+                    f"{path}:{fence_line}: cpp fence has both comment and inline metadata"
+                )
+            if inline_metadata is not None:
+                metadata, meta_line = inline_metadata, fence_line
+            elif pending is not None:
+                metadata, meta_line = pending
+            else:
+                raise VerificationError(f"{path}:{fence_line}: cpp fence has no example metadata")
             pending = None
             required = {"id", "std", "file", "kind", "compilers"}
             missing = sorted(required - metadata.keys())

@@ -2,8 +2,7 @@
 
 三种词汇类型分别表达“可能没有值”“有限类型集合中的一个值”和“运行期可保存任意可复制类型”。
 
-<!-- example id="cpp17-vocabulary-types" std="c++17" file="main.cpp" kind="single" compilers="all" output="answer=42, tag=cpp17" -->
-```cpp
+```cpp example id="cpp17-vocabulary-types" std="c++17" file="main.cpp" kind="single" compilers="all" output="answer=42, tag=cpp17"
 #include <any>
 #include <iostream>
 #include <optional>
@@ -65,8 +64,7 @@ int main() {
 
 `get<I>` 或 `get<T>` 选择错误会抛 `bad_variant_access`，指针风格的 `get_if` 在不匹配时返回空指针。`index()` 返回当前零基索引；无值异常状态返回 `variant_npos`。代码即使认为所有构造都不抛，也应理解该状态对泛型接口的影响。
 
-<!-- example id="cpp17-variant-visitor" std="c++17" file="main.cpp" kind="single" compilers="all" output="integer=42, text=cpp17" -->
-```cpp
+```cpp example id="cpp17-variant-visitor" std="c++17" file="main.cpp" kind="single" compilers="all" output="integer=42, text=cpp17"
 #include <iostream>
 #include <string>
 #include <variant>

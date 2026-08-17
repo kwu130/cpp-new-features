@@ -2,8 +2,7 @@
 
 C++11 增加了固定长度 `array`、哈希容器，以及直接在容器存储区构造元素的 `emplace` 系列接口。
 
-<!-- example id="cpp11-containers" std="c++11" file="main.cpp" kind="single" compilers="all" output="Ada=37, sum=6" -->
-```cpp
+```cpp example id="cpp11-containers" std="c++11" file="main.cpp" kind="single" compilers="all" output="Ada=37, sum=6"
 #include <array>
 #include <iostream>
 #include <string>
@@ -95,8 +94,7 @@ deque 分段存储，随机访问常数但不保证全体元素连续；list/for
 
 调用 `reserve` 不是正确性的要求，而是性能规划。它可能立即分配并使迭代器失效。元素引用和指针在 rehash 后仍保持有效，但依赖遍历顺序的代码本来就不具备可移植性。
 
-<!-- example id="cpp11-unordered-emplace" std="c++11" file="main.cpp" kind="single" compilers="all" output="inserted=true, existing=false, size=2" -->
-```cpp
+```cpp example id="cpp11-unordered-emplace" std="c++11" file="main.cpp" kind="single" compilers="all" output="inserted=true, existing=false, size=2"
 #include <iostream>
 #include <string>
 #include <unordered_map>

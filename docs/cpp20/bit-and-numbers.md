@@ -2,8 +2,7 @@
 
 `<bit>` 提供旋转、位计数、二进制上取整等可读且可移植的操作；`<numbers>` 提供按浮点类型定义的数学常量。
 
-<!-- example id="cpp20-bit-numbers" std="c++20" file="main.cpp" kind="single" compilers="all" output="ones=4, capacity=16, pi-valid=true" -->
-```cpp
+```cpp example id="cpp20-bit-numbers" std="c++20" file="main.cpp" kind="single" compilers="all" output="ones=4, capacity=16, pi-valid=true"
 #include <bit>
 #include <cstdint>
 #include <iostream>
@@ -29,8 +28,7 @@ int main() {
 
 这些函数大多是 `constexpr`，可同时用于静态断言、表大小计算和运行期热路径。重载只为标准无符号整数类型参与，传有符号数应先经过经过审查的显式转换，避免负值含义混乱。
 
-<!-- example id="cpp20-bit-operations" std="c++20" file="main.cpp" kind="single" compilers="all" output="width=8, floor=128, rotated=3" -->
-```cpp
+```cpp example id="cpp20-bit-operations" std="c++20" file="main.cpp" kind="single" compilers="all" output="width=8, floor=128, rotated=3"
 #include <bit>
 #include <cstdint>
 #include <iostream>

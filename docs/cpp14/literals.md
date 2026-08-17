@@ -2,8 +2,7 @@
 
 二进制字面量适合表达位掩码，单引号数字分隔符提高长数字的可读性且不改变数值。
 
-<!-- example id="cpp14-literals" std="c++14" file="main.cpp" kind="single" compilers="all" output="mask=165, population=1000000" -->
-```cpp
+```cpp example id="cpp14-literals" std="c++14" file="main.cpp" kind="single" compilers="all" output="mask=165, population=1000000"
 #include <iostream>
 
 int main() {
@@ -64,8 +63,7 @@ int main() {
 
 二进制字面量可以按协议字段而不是固定四位分组。数字分隔符不改变值，因此可以用分组直接展示版本位、权限位和标志位的边界。配合无符号类型可避免符号扩展影响右移。
 
-<!-- example id="cpp14-binary-bit-fields" std="c++14" file="main.cpp" kind="single" compilers="all" output="read=true, write=false, version=5" -->
-```cpp
+```cpp example id="cpp14-binary-bit-fields" std="c++14" file="main.cpp" kind="single" compilers="all" output="read=true, write=false, version=5"
 #include <cstdint>
 #include <iostream>
 

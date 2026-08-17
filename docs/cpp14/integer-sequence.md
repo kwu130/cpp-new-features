@@ -2,8 +2,7 @@
 
 `integer_sequence` 和 `index_sequence` 在编译期表示整数序列，常用于按索引展开元组或参数包。
 
-<!-- example id="cpp14-integer-sequence" std="c++14" file="main.cpp" kind="single" compilers="all" output="Ada 37" -->
-```cpp
+```cpp example id="cpp14-integer-sequence" std="c++14" file="main.cpp" kind="single" compilers="all" output="Ada 37"
 #include <cstddef>
 #include <iostream>
 #include <string>
@@ -58,8 +57,7 @@ C++17 用逗号折叠可简化有序副作用，但 get<I> 仍需要 I 包；int
 
 integer_sequence 不要求值连续或排序，可以直接写 index_sequence<2,0> 选择第三、第一元素。make 系列只是常用连续生成器。
 
-<!-- example id="cpp14-index-sequence-select" std="c++14" file="main.cpp" kind="single" compilers="all" output="third first" -->
-```cpp
+```cpp example id="cpp14-index-sequence-select" std="c++14" file="main.cpp" kind="single" compilers="all" output="third first"
 #include <cstddef>
 #include <iostream>
 #include <string>
@@ -89,8 +87,7 @@ int main() {
 
 C++14 没有 `std::apply`。若要把一个元组的每个元素作为独立实参传给可调用对象，需要先生成与元组长度相同的索引序列，再在实现函数中展开 `get<Indexes>(tuple)...`。这是 `integer_sequence` 最具代表性的用途。
 
-<!-- example id="cpp14-index-sequence-invoke" std="c++14" file="main.cpp" kind="single" compilers="all" output="result=14" -->
-```cpp
+```cpp example id="cpp14-index-sequence-invoke" std="c++14" file="main.cpp" kind="single" compilers="all" output="result=14"
 #include <cstddef>
 #include <iostream>
 #include <tuple>

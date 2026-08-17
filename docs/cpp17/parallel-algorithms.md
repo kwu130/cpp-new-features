@@ -2,8 +2,7 @@
 
 部分标准算法新增执行策略重载。`seq` 要求顺序执行，`par` 允许多线程，`par_unseq` 还允许线程内交错或向量化执行。
 
-<!-- example id="cpp17-execution-policies" std="c++17" file="main.cpp" kind="single" compilers="gcc" output="1 4 9 16" -->
-```cpp
+```cpp example id="cpp17-execution-policies" std="c++17" file="main.cpp" kind="single" compilers="gcc" output="1 4 9 16"
 #include <algorithm>
 #include <execution>
 #include <iostream>

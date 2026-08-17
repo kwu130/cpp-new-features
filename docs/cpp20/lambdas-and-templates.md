@@ -2,8 +2,7 @@
 
 C++20 允许 Lambda 使用显式模板参数列表，复杂泛型回调可以直接命名参数类型，并对它们施加约束。
 
-<!-- example id="cpp20-lambda-templates" std="c++20" file="main.cpp" kind="single" compilers="all" output="6" -->
-```cpp
+```cpp example id="cpp20-lambda-templates" std="c++20" file="main.cpp" kind="single" compilers="all" output="6"
 #include <concepts>
 #include <iostream>
 #include <vector>
@@ -45,8 +44,7 @@ C++14 泛型 Lambda 的每个 `auto` 参数对应隐式模板参数，却无法�
 
 C++20 允许初始化捕获本身展开参数包，把每个传入对象分别变成闭包成员，适合构造拥有一组异构状态的局部任务。
 
-<!-- example id="cpp20-lambda-pack-capture" std="c++20" file="main.cpp" kind="single" compilers="all" output="sum=6" -->
-```cpp
+```cpp example id="cpp20-lambda-pack-capture" std="c++20" file="main.cpp" kind="single" compilers="all" output="sum=6"
 #include <iostream>
 #include <utility>
 

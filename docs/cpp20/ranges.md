@@ -2,8 +2,7 @@
 
 Ranges 算法直接接受范围；Views 则以惰性、非拥有方式组合过滤和转换，管道语法让数据流更清晰。
 
-<!-- example id="cpp20-ranges" std="c++20" file="main.cpp" kind="single" compilers="all" output="4 16" -->
-```cpp
+```cpp example id="cpp20-ranges" std="c++20" file="main.cpp" kind="single" compilers="all" output="4 16"
 #include <iostream>
 #include <ranges>
 #include <vector>
@@ -49,8 +48,7 @@ Ranges 算法位于 `std::ranges`，很多能直接接收整个范围，也保�
 
 投影在比较器之前作用于元素。按成员排序不必编写重复 Lambda，可传成员指针；算法通过 `std::invoke` 语义应用投影。
 
-<!-- example id="cpp20-ranges-projection" std="c++20" file="main.cpp" kind="single" compilers="all" output="Bob:10 Ada:20" -->
-```cpp
+```cpp example id="cpp20-ranges-projection" std="c++20" file="main.cpp" kind="single" compilers="all" output="Bob:10 Ada:20"
 #include <algorithm>
 #include <iostream>
 #include <ranges>

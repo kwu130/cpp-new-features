@@ -2,8 +2,7 @@
 
 变量模板为一族类型提供变量定义。C++14 的 `constexpr` 函数允许局部变量、循环和分支，使编译期算法更接近日常代码。
 
-<!-- example id="cpp14-compile-time" std="c++14" file="main.cpp" kind="single" compilers="all" output="55" -->
-```cpp
+```cpp example id="cpp14-compile-time" std="c++14" file="main.cpp" kind="single" compilers="all" output="55"
 #include <iostream>
 #include <type_traits>
 
@@ -41,8 +40,7 @@ C++11 常量函数几乎只能包含单个返回表达式，复杂算法被迫�
 
 非构造 constexpr 成员函数在 C++14 不再因为 constexpr 自动带 const 成员限定，可定义修改当前常量求值对象的成员函数。是否能修改实际对象仍由对象的 const 性和求值上下文决定。
 
-<!-- example id="cpp14-constexpr-mutable-value" std="c++14" file="main.cpp" kind="single" compilers="all" output="point=4,6" -->
-```cpp
+```cpp example id="cpp14-constexpr-mutable-value" std="c++14" file="main.cpp" kind="single" compilers="all" output="point=4,6"
 #include <iostream>
 
 struct Point {
@@ -127,8 +125,7 @@ C++14 常量求值主要围绕字面类型：具有适当 constexpr 构造/析�
 
 C++14 允许 `constexpr` 函数包含局部变量、循环和条件分支，让欧几里得算法等逻辑不再依赖模板递归或函数递归。常量求值器按普通控制流执行，遇到不允许的操作才拒绝常量上下文。
 
-<!-- example id="cpp14-constexpr-gcd" std="c++14" file="main.cpp" kind="single" compilers="all" output="gcd=6" -->
-```cpp
+```cpp example id="cpp14-constexpr-gcd" std="c++14" file="main.cpp" kind="single" compilers="all" output="gcd=6"
 #include <iostream>
 
 constexpr int greatest_common_divisor(int left, int right) {

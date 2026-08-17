@@ -2,8 +2,7 @@
 
 右值引用让类型能够转移资源而非复制资源。`std::move` 表示对象可以被移动，`std::forward` 在转发函数中保留实参原有的值类别。
 
-<!-- example id="cpp11-move-forward" std="c++11" file="main.cpp" kind="single" compilers="all" output="moved 3 values" -->
-```cpp
+```cpp example id="cpp11-move-forward" std="c++11" file="main.cpp" kind="single" compilers="all" output="moved 3 values"
 #include <cstddef>
 #include <iostream>
 #include <utility>
@@ -119,8 +118,7 @@ protected/private 移动构造会影响容器和工厂可用性。访问控制�
 
 完美转发的目标不是“总是移动”，而是让下游函数看到调用者原本提供的值类别。模板形参推导、引用折叠与 `std::forward` 三者缺一不可。若在转发函数中直接使用具名参数，它是左值表达式，右值信息会丢失。
 
-<!-- example id="cpp11-perfect-forwarding-categories" std="c++11" file="main.cpp" kind="single" compilers="all" output="lvalue rvalue" -->
-```cpp
+```cpp example id="cpp11-perfect-forwarding-categories" std="c++11" file="main.cpp" kind="single" compilers="all" output="lvalue rvalue"
 #include <iostream>
 #include <string>
 #include <utility>
@@ -148,8 +146,7 @@ int main() {
 
 容器扩容要先在新存储中构造元素。如果移动中途抛异常且已经改变源元素，回滚旧容器会非常困难。标准库可以在“移动可能抛、复制可用”时选择复制，在移动不抛或对象只能移动时选择移动。
 
-<!-- example id="cpp11-move-if-noexcept" std="c++11" file="main.cpp" kind="single" compilers="all" output="copy selected" -->
-```cpp
+```cpp example id="cpp11-move-if-noexcept" std="c++11" file="main.cpp" kind="single" compilers="all" output="copy selected"
 #include <iostream>
 #include <type_traits>
 #include <utility>

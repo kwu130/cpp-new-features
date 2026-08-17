@@ -2,8 +2,7 @@
 
 Lambda 可以在使用位置定义匿名函数对象，非常适合算法、自定义回调和局部策略。
 
-<!-- example id="cpp11-lambdas" std="c++11" file="main.cpp" kind="single" compilers="all" output="12" -->
-```cpp
+```cpp example id="cpp11-lambdas" std="c++11" file="main.cpp" kind="single" compilers="all" output="12"
 #include <algorithm>
 #include <iostream>
 #include <numeric>
@@ -46,8 +45,7 @@ Lambda 不能有默认捕获同时显式重复同类捕获；`[&, x]` 表示默�
 
 调用运算符可以声明 `noexcept`，使调用表达式参与 noexcept 检查并在异常逃出时终止。它不是“编译器自动证明不抛”，应只在函数体调用链满足契约时使用。
 
-<!-- example id="cpp11-lambda-noexcept" std="c++11" file="main.cpp" kind="single" compilers="all" output="noexcept=true, value=42" -->
-```cpp
+```cpp example id="cpp11-lambda-noexcept" std="c++11" file="main.cpp" kind="single" compilers="all" output="noexcept=true, value=42"
 #include <iostream>
 
 int main() {
@@ -106,8 +104,7 @@ weak_ptr 方案会使回调可能什么也不做，接口应定义注销/失效�
 
 带状态闭包则是普通对象。按值捕获的数据成员会随闭包复制，`mutable` 只允许非 const 调用运算符修改这些副本，不会修改外围原变量。
 
-<!-- example id="cpp11-lambda-state-function-pointer" std="c++11" file="main.cpp" kind="single" compilers="all" output="callback=42, state=2, outside=0" -->
-```cpp
+```cpp example id="cpp11-lambda-state-function-pointer" std="c++11" file="main.cpp" kind="single" compilers="all" output="callback=42, state=2, outside=0"
 #include <iostream>
 
 int call(int (*function)(int), int value) {

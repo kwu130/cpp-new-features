@@ -4,8 +4,7 @@ Modules 用显式导入关系替代文本式头文件包含，可减少宏泄漏
 
 模块接口单元：
 
-<!-- example id="cpp20-modules" std="c++20" file="math.cppm" kind="modules" compilers="gcc" output="42" -->
-```cpp
+```cpp example id="cpp20-modules" std="c++20" file="math.cppm" kind="modules" compilers="gcc" output="42"
 export module math;
 
 export int add(int left, int right) {
@@ -15,8 +14,7 @@ export int add(int left, int right) {
 
 导入模块的程序：
 
-<!-- example id="cpp20-modules" std="c++20" file="main.cpp" kind="modules" compilers="gcc" output="42" -->
-```cpp
+```cpp example id="cpp20-modules" std="c++20" file="main.cpp" kind="modules" compilers="gcc" output="42"
 import math;
 
 #include <iostream>

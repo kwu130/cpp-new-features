@@ -2,8 +2,7 @@
 
 `span` 是连续内存的非拥有视图，可以统一接收数组、`array`、`vector` 或指针加长度，同时保留元素类型和边界信息。
 
-<!-- example id="cpp20-span" std="c++20" file="main.cpp" kind="single" compilers="all" output="10" -->
-```cpp
+```cpp example id="cpp20-span" std="c++20" file="main.cpp" kind="single" compilers="all" output="10"
 #include <array>
 #include <iostream>
 #include <span>
@@ -38,8 +37,7 @@ extent 是 `span` 类型的第二模板参数。缺省值 `dynamic_extent` 表�
 
 `span<T, N>::extent` 是编译期常量，可用于静态断言和选择固定块算法。动态 span 的 `extent` 等于 `dynamic_extent`，运行期 `size()` 才给出实际长度。把动态长度转换为固定长度需要满足构造前置条件，不能因目标类型写了 N 就自动截断。
 
-<!-- example id="cpp20-span-static-subview" std="c++20" file="main.cpp" kind="single" compilers="all" output="middle=2,3 bytes=8" -->
-```cpp
+```cpp example id="cpp20-span-static-subview" std="c++20" file="main.cpp" kind="single" compilers="all" output="middle=2,3 bytes=8"
 #include <array>
 #include <cstddef>
 #include <iostream>

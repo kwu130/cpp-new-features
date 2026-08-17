@@ -2,8 +2,7 @@
 
 原子对象可以直接等待值变化并通知等待者，避免围绕简单状态额外建立条件变量。`atomic_ref` 则为现有对象提供原子访问视图。
 
-<!-- example id="cpp20-atomic" std="c++20" file="main.cpp" kind="single" compilers="all" output="43" -->
-```cpp
+```cpp example id="cpp20-atomic" std="c++20" file="main.cpp" kind="single" compilers="all" output="43"
 #include <atomic>
 #include <iostream>
 #include <thread>
@@ -64,8 +63,7 @@ int main() {
 
 底层对象地址必须满足 `required_alignment`，生命周期必须覆盖所有 atomic_ref。对象本身不能是 const，且 T 必须满足规定的可平凡复制等要求。是否无锁可查询，未对齐不能靠实现“凑合”。
 
-<!-- example id="cpp20-atomic-ref-counter" std="c++20" file="main.cpp" kind="single" compilers="all" output="counter=2000" -->
-```cpp
+```cpp example id="cpp20-atomic-ref-counter" std="c++20" file="main.cpp" kind="single" compilers="all" output="counter=2000"
 #include <atomic>
 #include <iostream>
 #include <thread>
