@@ -1,6 +1,26 @@
 # 移动语义与完美转发
 
-右值引用让类型能够转移资源而非复制资源。`std::move` 表示对象可以被移动，`std::forward` 在转发函数中保留实参原有的值类别。
+## 学习目标与理解顺序
+
+本文假设读者理解构造函数、析构函数、复制构造和动态资源。读完后，你应该能够解释右值引用、移动构造、`std::move`、引用折叠和 `std::forward` 之间的关系。
+
+建议分两次阅读：第一次只掌握“资源可以从即将销毁的对象转交出去”；第二次再学习值类别、转发引用和异常保证。
+
+## C++03 中的问题：昂贵但没有必要的复制
+
+拥有动态数组、文件句柄或大型容器的对象在复制时必须申请新资源并复制内容。然而临时对象和即将被覆盖的对象很快就会销毁，深复制之后立即析构原资源是一种浪费。
+
+C++11 增加右值引用 `T&&`，让重载解析能够识别可复用资源的表达式。类型可以提供移动构造和移动赋值，把指针或句柄转交给新对象，再把源对象重置为可析构状态。
+
+## 三个工具的直观分工
+
+- 移动构造/赋值负责真正转移资源；
+- `std::move(object)` 把表达式转换成可选择移动重载的形式，本身不搬运数据；
+- `std::forward<T>(value)` 只用于转发模板，按照最初实参是左值还是右值恢复值类别。
+
+## 第一个完整示例
+
+`Buffer` 禁止复制但允许移动。工厂用完美转发构造对象，随后把 `original` 的资源移动到 `destination`。
 
 ```cpp example id="cpp11-move-forward" std="c++11" file="main.cpp" kind="single" compilers="all" output="moved 3 values"
 #include <cstddef>
@@ -33,11 +53,13 @@ int main() {
 }
 ```
 
-## 易错点
+程序输出 `moved 3 values`。移动后只使用 `destination` 的内容；`original` 仍然可以析构或重新赋值，但除非类型另有保证，不应假定它还保存原来的三个元素。
+
+## 第一个易错点
 
 `std::move` 本身不移动任何数据，只进行类型转换；真正的转移发生在移动构造或移动赋值中。被移动对象仍然有效，但其值通常未指定，只适合销毁或重新赋值。资源所有者应遵循零法则或五法则。
 
-## 从复制成本到所有权转移
+## 从复制成本到所有权转移：完整语义
 
 C++03 中，按值返回大型容器或把临时对象放入容器，语言层面只能选择复制或依赖编译器优化。右值引用让重载能够识别“即将结束生命周期的对象”，从中接管指针、句柄等资源，并把源对象重置为可析构状态。
 
@@ -198,6 +220,7 @@ int main() {
 
 ## 权威资料
 
+- [GeeksforGeeks：Move Semantics and Rvalue References](https://www.geeksforgeeks.org/cpp/stdmove-in-utility-in-c-move-semantics-move-constructors-and-move-assignment-operators/)
 - [引用与引用折叠](https://eel.is/c++draft/dcl.ref)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

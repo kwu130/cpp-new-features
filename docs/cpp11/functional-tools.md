@@ -1,6 +1,19 @@
 # `tuple`、类型萃取与可调用对象
 
-`tuple` 表示固定数量的异构值；类型萃取支持编译期类型查询与转换；`function` 提供统一的类型擦除调用接口。
+## 学习目标与阅读路线
+
+C++03 对异构返回值、类型属性查询和可调用对象适配缺少统一标准设施。C++11 引入 `tuple` 组合固定数量的不同类型值，用类型萃取在编译期查询/变换类型，用 `std::function` 和 `std::bind` 统一一部分调用形式。
+
+读完后，你应该能够：
+
+- 创建、访问和解包 `tuple`；
+- 使用常见类型萃取与 `enable_if`；
+- 判断何时需要 `std::function` 的类型擦除；
+- 看懂 `bind` 的占位符与保存语义，并知道 Lambda 通常更易读。
+
+## 第一个完整示例
+
+示例把姓名和分数组合为 `tuple`，在编译期检查字段类型，再用 `bind` 固定分数参数并把姓名保留为调用参数。
 
 ```cpp example id="cpp11-functional-tools" std="c++11" file="main.cpp" kind="single" compilers="all" output="Ada:42"
 #include <functional>
@@ -26,7 +39,7 @@ int main() {
 }
 ```
 
-`std::function` 可能产生分配和间接调用开销；无需存储异构可调用对象时优先使用模板或具体 Lambda 类型。新代码中 Lambda 通常比复杂的 `bind` 表达式更直观。
+程序输出 `Ada:42`。`tuple_size` 和 `tuple_element` 只参与编译期检查；`formatter` 在运行时保存绑定对象。`std::function` 可能产生分配和间接调用开销，无需长期存储异构可调用对象时优先使用模板或具体 Lambda 类型。
 
 ## `tuple` 的结构与访问
 
@@ -163,6 +176,12 @@ int main() {
 | `mem_fn` | 把成员指针适配为统一可调用对象 |
 | 类型萃取 | 多数暴露 `value`/`type`，C++14 才普及 `_t` 简写 |
 
+## C++11 弃用的旧函数适配器
+
+C++11 在提供 Lambda、`bind` 和 `function` 的同时，正式弃用了多组窄用途适配器，包括 `bind1st`、`bind2nd`、`ptr_fun`、`mem_fun`，以及旧适配协议使用的 `unary_function`、`binary_function`。这些设施最终在 C++17 被移除。
+
+迁移时优先写可读的 Lambda；只有确实需要占位符重排或组合已有调用对象时再使用 `std::bind`。迁移的目的不仅是更换名称，还要消除旧适配器依赖的嵌套类型协议和隐蔽参数保存语义。
+
 ## 函数工具专项审查
 
 - tuple 索引是否在编译期范围内并与字段语义一致？
@@ -178,6 +197,8 @@ int main() {
 
 ## 权威资料
 
+- [GeeksforGeeks：C++ tuple](https://www.geeksforgeeks.org/cpp/tuples-in-c/)
+- [GeeksforGeeks：旧 binders](https://www.geeksforgeeks.org/cpp/binders-in-cpp-stl/)
 - [函数对象与调用包装](https://eel.is/c++draft/function.objects)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

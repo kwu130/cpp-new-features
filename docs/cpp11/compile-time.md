@@ -1,6 +1,28 @@
 # `constexpr` 与 `static_assert`
 
-`constexpr` 允许值在满足条件时参与编译期计算，`static_assert` 用于在编译期验证不变量。
+## 学习目标与前置知识
+
+读者应理解 `const`、函数调用和编译错误。读完后，你应该能够区分 `const` 与 `constexpr`，编写符合 C++11 限制的常量函数，并用 `static_assert` 在编译期检查不变量。
+
+## C++03 中的问题
+
+C++03 的编译期常量能力分散在整型常量、枚举和模板技巧中。简单计算常要改写成模板元编程，错误信息难读，自定义值类型也很难直接参与常量表达式。
+
+C++11 用 `constexpr` 表达“这个变量必须由常量表达式初始化”或“这个函数具备常量求值资格”，再用 `static_assert` 在翻译阶段验证条件。
+
+## 最小语法
+
+```text
+constexpr int value = 42;
+constexpr int square(int x) { return x * x; }
+static_assert(square(2) == 4, "square must work");
+```
+
+`constexpr` 函数不保证每次都在编译期运行；只有实参和使用语境要求常量时，调用才必须成功常量求值。
+
+## 第一个完整示例
+
+下面用 C++11 允许的单个返回表达式递归计算阶乘，并用编译期断言验证结果。
 
 ```cpp example id="cpp11-compile-time" std="c++11" file="main.cpp" kind="single" compilers="all" output="120"
 #include <iostream>
@@ -17,7 +39,7 @@ int main() {
 }
 ```
 
-C++11 的 `constexpr` 函数体限制严格，通常只能包含单个返回语句；后续标准逐步放宽。`constexpr` 函数也能在运行期调用，是否常量求值取决于调用上下文和实参。
+程序输出 `120`。`result` 必须在编译期得到值，`static_assert` 不生成运行时代码。C++11 的 `constexpr` 函数体限制严格，通常只能包含单个返回语句；后续标准逐步放宽。
 
 ## 常量表达式的作用
 
@@ -150,6 +172,7 @@ constexpr 属于函数声明契约的一部分，声明和定义必须一致。�
 
 ## 权威资料
 
+- [GeeksforGeeks：constexpr](https://www.geeksforgeeks.org/cpp/understanding-constexper-specifier-in-cpp/)
 - [constexpr 与常量表达式](https://eel.is/c++draft/dcl.constexpr)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

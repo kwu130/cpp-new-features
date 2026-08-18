@@ -1,6 +1,23 @@
 # 类定义能力增强
 
-C++11 可以显式默认或删除特殊成员函数，并通过 `override`、`final` 让继承意图接受编译器检查。委托构造和继承构造减少了重复初始化逻辑，`enum class` 避免枚举值污染外围作用域。
+## 学习目标与旧代码痛点
+
+本文面向已经理解构造、复制、析构、继承和虚函数的读者。C++03 常用“私有但不实现的复制函数”禁止复制，重写虚函数只能依赖签名恰好一致，多个构造函数还会重复初始化逻辑。这些做法的错误往往到链接、测试或运行时才暴露。
+
+C++11 让类设计意图可以直接进入语法和编译器检查。读完后，你应该能够使用 `= default`、`= delete`、`override`、`final`、委托/继承构造函数和 `enum class`，并理解它们如何影响特殊成员生成。
+
+## 能力速览
+
+```text
+Type(const Type&) = delete;        // 禁止复制
+virtual void run() override;       // 必须真正重写基类虚函数
+class Leaf final : public Base {}; // 禁止继续继承
+enum class State { idle, running };
+```
+
+## 第一个完整示例
+
+示例组合展示强类型枚举、虚析构、默认析构、继承构造、禁止复制以及重写检查。
 
 ```cpp example id="cpp11-class-improvements" std="c++11" file="main.cpp" kind="single" compilers="all" output="worker:7"
 #include <iostream>
@@ -36,7 +53,7 @@ int main() {
 }
 ```
 
-对所有虚函数重写使用 `override`。只有明确禁止继承或重写时才使用 `final`。删除函数不仅适用于复制操作，也可用于阻止不希望发生的隐式类型转换。
+程序输出 `worker:7`。`using Entity::Entity` 让 `Worker` 使用基类的整数构造入口；`override` 保证 `name` 的签名与基类一致；`final` 明确 `Worker` 不再作为扩展基类。对所有虚函数重写使用 `override`，只有明确关闭扩展点时才使用 `final`。
 
 ## 显式表达编译器生成行为
 
@@ -151,6 +168,12 @@ int main() {
 
 默认化比较等能力属于后续标准，C++11 `= default` 主要用于特殊成员。不要把 C++20 `operator<=> = default` 混入本章。
 
+## C++11 的隐式复制弃用边界
+
+C++11 没有删除旧代码依赖的隐式复制，但开始弃用部分“只声明一部分特殊成员、让编译器补齐另一部分”的行为：类若用户声明析构函数或复制赋值运算符，仍隐式生成复制构造函数的行为被标记为弃用；复制赋值在存在用户声明析构或复制构造时也有对应边界。
+
+这条规则的教学重点不是背诵组合，而是让资源类明确所有权语义。拥有资源的类应遵循五法则，优先使用 RAII 成员则遵循零法则。不要依赖“编译器目前仍生成复制函数”维持浅复制行为。
+
 ## 类语法速查
 
 | 语法 | 作用/边界 |
@@ -181,6 +204,7 @@ int main() {
 
 ## 权威资料
 
+- [GeeksforGeeks：C++ enum class](https://www.geeksforgeeks.org/cpp/enum-classes-in-c-and-their-advantage-over-enum-datatype/)
 - [类与特殊成员函数](https://eel.is/c++draft/class)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

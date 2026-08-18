@@ -1,6 +1,42 @@
 # 统一初始化、初始化列表与 `nullptr`
 
-花括号初始化为对象、容器和聚合类型提供统一写法，并阻止部分窄化转换。`nullptr` 则替代了容易与整数混淆的 `0` 和 `NULL`。
+## 学习目标与阅读路线
+
+本文需要两项 C++98/03 基础：知道构造函数重载，并理解指针可以用空值表示“不指向对象”。读完后，你应该能够：
+
+- 识别直接初始化、复制初始化和列表初始化；
+- 用花括号初始化标量、聚合、类和容器；
+- 解释为什么列表初始化会拒绝窄化；
+- 理解 `std::initializer_list` 构造函数为何会优先匹配；
+- 用 `nullptr` 消除整数 `0` 与空指针的重载歧义。
+
+第一次阅读先掌握花括号和 `nullptr` 的日常写法；重载两阶段、临时数组寿命和聚合版本差异可以在需要设计类接口时再深入。
+
+## C++03 中的问题
+
+C++03 对不同对象使用不同初始化形式：圆括号用于构造对象，等号常用于标量，花括号主要用于数组和聚合。相似意图写法不同，而且许多可能丢失数据的隐式转换不会被阻止。
+
+空指针通常写成 `0` 或宏 `NULL`。但它们本质上仍可能是整数，面对 `function(int)` 与 `function(char*)` 这样的重载时，编译器可能选择整数版本或报告歧义。
+
+C++11 提供两组改进：
+
+- `{...}` 成为适用于多种对象的列表初始化语法，并检查窄化；
+- `nullptr` 成为专门的空指针字面量，不再冒充普通整数。
+
+## 最小语法
+
+```text
+int count{3};
+std::vector<int> values{1, 2, 3};
+Widget object{argument};
+int* pointer = nullptr;
+```
+
+花括号不是“总能替代圆括号”的简单文本替换。类一旦提供 `initializer_list` 构造函数，重载选择会优先考虑它；这也是本文最重要的接口设计边界。
+
+## 第一个完整示例
+
+下面的 `Points` 接收一个整数列表并复制进 `vector`。主函数同时演示类对象的列表初始化和 `nullptr` 判断。
 
 ```cpp example id="cpp11-initialization" std="c++11" file="main.cpp" kind="single" compilers="all" output="3 points, first=1"
 #include <cstddef>
@@ -27,15 +63,13 @@ int main() {
 }
 ```
 
-## 实践建议
+输出为 `3 points, first=1`。`Points points{1, 2, 3}` 先形成一个只读的临时元素序列，构造函数在调用期间把元素复制进成员容器；`pointer` 的类型明确是 `int*`，与 `nullptr` 比较不会涉及整数重载。
+
+## 入门实践建议
 
 新代码优先使用花括号初始化和 `nullptr`。但类同时拥有普通构造函数和 `initializer_list` 构造函数时，花括号会优先匹配后者，应确认这正是预期语义。
 
 窄化写法如 `int value{3.14};` 会在编译期被拒绝，这类反例不放入可执行代码围栏。
-
-## 学习目标
-
-本章需要掌握直接列表初始化、复制列表初始化、聚合初始化和 `initializer_list` 构造的优先级，并理解为什么 `nullptr` 能解决空指针重载歧义。
 
 ## 初始化形式
 
@@ -175,6 +209,8 @@ C++11 聚合定义比后续版本更严格，默认成员初始化器等特性�
 
 ## 权威资料
 
+- [GeeksforGeeks：Uniform Initialization](https://www.geeksforgeeks.org/cpp/uniform-initialization-in-c/)
+- [GeeksforGeeks：Null Pointer](https://www.geeksforgeeks.org/cpp/null-pointer-in-cpp/)
 - [列表初始化](https://eel.is/c++draft/dcl.init.list)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

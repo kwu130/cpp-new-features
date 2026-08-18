@@ -1,6 +1,14 @@
 # `chrono`、随机数与正则表达式
 
-`chrono` 提供带单位的时间类型，`<random>` 将随机引擎与分布分离，正则库用于模式匹配。
+## 学习目标与旧接口问题
+
+C++03 的时间接口大量使用裸整数和 C 结构体，随机数常依赖全局 `rand()`，正则表达式没有进入标准库。单位、随机算法、概率分布和匹配语法往往隐藏在约定中。
+
+C++11 引入三组独立设施：`chrono` 用类型表达时间单位和时钟，`<random>` 把伪随机引擎与概率分布分开，`<regex>` 提供标准模式匹配。读完后，你应该能为耗时测量选择时钟、构造可复现随机测试，并区分整串匹配与子串搜索。
+
+## 第一个完整示例
+
+示例把 2500 毫秒显式转换为整秒，用固定种子模拟一次骰子，并验证标识符字符串。
 
 ```cpp example id="cpp11-utility-libraries" std="c++11" file="main.cpp" kind="single" compilers="all" output="valid=true, seconds=2"
 #include <chrono>
@@ -25,7 +33,7 @@ int main() {
 }
 ```
 
-持续时间转换可能截断低位精度。不要用 `rand()` 实现需要明确分布的随机逻辑；安全令牌则需要密码学随机源，标准伪随机引擎并不适用。正则表达式便于描述模式，但复杂解析任务应考虑专用解析器。
+程序输出 `valid=true, seconds=2`。`duration_cast` 丢弃不足一秒的 500 毫秒；固定种子让测试可重复，但不提供安全随机性。正则表达式便于描述局部模式，复杂语法和不可信高成本输入应考虑专用解析器。
 
 ## `chrono` 的强类型时间
 
@@ -180,6 +188,12 @@ int main() {
 | `regex_search` | 查找任意匹配子序列 |
 | `smatch` | 保存指向原字符串的匹配范围，原数据需存活 |
 
+## `random_shuffle` 的准确版本边界
+
+`std::random_shuffle` 在 C++11 仍然存在，并没有在本版本被正式弃用。它到 C++14 才弃用、C++17 被移除。替代接口 `std::shuffle` 接受显式随机引擎，能让随机来源、状态和测试复现策略更清楚。
+
+因此 C++11 项目已经可以主动迁移到 `shuffle`，但文档必须把“推荐迁移”和“本标准已弃用”区分开。类似地，`rand()` 的质量和全局状态存在工程问题，也不等于它在 C++11 被删除。
+
 ## 实用库专项审查
 
 - duration 转换是否发生截断或表示类型溢出？
@@ -195,6 +209,7 @@ int main() {
 
 ## 权威资料
 
+- [GeeksforGeeks：`shuffle` 与 `random_shuffle`](https://www.geeksforgeeks.org/cpp/shuffle-vs-random_shuffle-c/)
 - [时间工具](https://eel.is/c++draft/time)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

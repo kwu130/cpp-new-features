@@ -1,6 +1,30 @@
 # 可变参数模板与类型别名
 
-可变参数模板允许模板接受任意数量的类型或值参数。别名模板用 `using` 为一族类型定义更易读的名称。
+## 学习目标与前置知识
+
+本文假设读者会编写普通函数模板和类模板。读完后，你应该能够声明参数包、递归展开参数、查询包长度、用完美转发构造对象，并用别名模板简化类型族名称。
+
+## C++03 中的问题
+
+C++03 模板的参数数量固定。若要支持 1、2、3 个参数，库作者常生成大量几乎相同的重载；C 风格 `...` 又会丢失静态类型信息。冗长的模板类型别名通常依赖 `typedef`，但 `typedef` 不能自然表达一整个模板族。
+
+C++11 引入可变参数模板，让一个模板接收零个或多个类型/值参数；同时允许用 `using Name = Type` 和别名模板为复杂类型建立更清晰的名字。
+
+## 最小语法
+
+```text
+template <typename... Types>
+void function(Types... values);
+
+template <typename T>
+using Owner = std::unique_ptr<T>;
+```
+
+带 `...` 的声明产生参数包，带 `...` 的模式在实例化时展开。参数包不是运行时数组，不能用下标访问。
+
+## 第一个完整示例
+
+`sum` 每次处理第一个参数并递归调用更短的参数列表；单参数重载负责终止递归。`Owner<T>` 则为 `unique_ptr<T>` 提供意图更明显的别名。
 
 ```cpp example id="cpp11-variadic-templates" std="c++11" file="main.cpp" kind="single" compilers="all" output="6"
 #include <iostream>
@@ -25,7 +49,7 @@ int main() {
 }
 ```
 
-C++11 中通常通过递归展开参数包，并提供终止重载。C++17 的折叠表达式会显著简化这种代码。参数包展开的上下文和求值顺序需要单独确认，不要假设函数实参按书写顺序求值。
+程序输出 `6`。编译器分别实例化处理三个、两个和一个参数的 `sum`；优化器通常能消除递归调用开销。C++17 的折叠表达式会简化这种代码，但不能写进最低标准为 C++11 的示例。
 
 ## 参数包的组成
 
@@ -190,6 +214,7 @@ int main() {
 
 ## 权威资料
 
+- [GeeksforGeeks：Variadic Templates](https://www.geeksforgeeks.org/cpp/variadic-function-templates-c/)
 - [可变参数模板](https://eel.is/c++draft/temp.variadic)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

@@ -1,6 +1,22 @@
 # 并发编程
 
-C++11 首次提供跨平台线程、同步原语、任务结果和原子操作，使并发代码不再依赖平台 API。
+## 学习目标与阅读警告
+
+C++11 首次定义统一的线程库和内存模型，使并发正确性不再依赖某个操作系统或“某台机器上碰巧可用”的经验。本文假设读者理解函数对象和 RAII，但不要求已有并发经验。
+
+读完后，你应该能够管理线程生命周期、用互斥量保护不变量、正确等待条件变量、通过 Future/Promise 传递结果，并理解原子操作解决的是哪一层问题。
+
+建议按“线程 → 锁 → 条件变量/任务 → 原子与内存序”阅读。不要从最弱内存序开始学习；先用互斥量和默认顺序得到正确程序，再讨论有证据的优化。
+
+## C++03 中的问题
+
+C++03 标准没有线程概念。项目直接调用 pthread、Win32 或其他平台 API，编译器语言模型也没有正式定义线程间的数据竞争和同步关系。同一段代码即使 CPU 指令看似安全，优化器仍可能作出与程序员直觉不同的变换。
+
+C++11 同时加入 `std::thread`、互斥量、条件变量、任务共享状态、原子类型和 happens-before 规则。库接口与语言内存模型必须一起理解。
+
+## 第一个完整示例
+
+工作线程在锁保护下写入共享值，通过 Promise/Future 发布结果；主线程连接工作线程后，再用 `async` 启动一个明确的异步计算。
 
 ```cpp example id="cpp11-concurrency" std="c++11" file="main.cpp" kind="single" compilers="all" output="total=42, doubled=42"
 #include <atomic>
@@ -36,7 +52,7 @@ int main() {
 }
 ```
 
-每个可连接线程都必须 `join` 或 `detach`，通常应通过 RAII 包装。优先使用 `lock_guard` 管理互斥量。条件变量的等待必须带谓词以应对虚假唤醒。原子操作只解决特定共享状态的数据竞争，不自动保证整个业务不变量。
+程序输出 `total=42, doubled=42`。每个可连接线程都必须 `join` 或 `detach`，通常应通过 RAII 包装；优先使用 `lock_guard` 管理互斥量；条件变量等待必须反复检查谓词；原子操作只解决特定内存位置的同步，不自动保护整个业务不变量。
 
 ## C++ 内存模型基础
 
@@ -261,6 +277,7 @@ int main() {
 
 ## 权威资料
 
+- [GeeksforGeeks：Multithreading in C++](https://www.geeksforgeeks.org/cpp/multithreading-in-cpp/)
 - [线程支持库](https://eel.is/c++draft/thread)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

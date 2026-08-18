@@ -1,14 +1,59 @@
 # 类型推导：`auto` 与 `decltype`
 
-## 为什么需要
+## 学习目标与阅读路线
 
-模板和迭代器类型往往很长。`auto` 根据初始化表达式推导变量类型，`decltype` 则在不求值表达式的情况下取得其类型，使代码既简洁又保持静态类型检查。
+本文面向已经会声明变量、使用引用并接触过 STL 迭代器的读者。读完后，你应该能够：
 
-## 核心语义
+- 用 `auto` 简化由初始化表达式自然决定的局部变量类型；
+- 判断 `auto` 何时会复制对象、保留 `const`，或保留引用；
+- 区分 `decltype(name)` 与 `decltype((name))`；
+- 看懂数组退化、函数类型和代理对象带来的推导陷阱；
+- 知道何时显式类型比自动推导更清楚。
 
-- `auto` 的规则与模板实参推导接近，通常会丢弃顶层 `const` 和引用；需要引用时应显式写 `auto&` 或 `const auto&`。
-- `decltype(name)` 对未加括号的变量名给出声明类型。
-- `decltype((expression))` 根据表达式值类别可能得到引用类型。
+建议先阅读“第一个例子”和两种工具的直观解释，再进入后半篇的 cv/ref 规则、值类别和代理类型。第一次阅读不需要记住整张推导表。
+
+## C++03 中的问题
+
+C++03 要求程序员完整写出变量类型。基础类型并不麻烦，但 STL 迭代器和模板表达式的类型可能很长：
+
+```text
+std::vector<int>::const_iterator iterator = values.begin();
+```
+
+这里真正重要的信息是“`iterator` 接收 `values.begin()` 的结果”，冗长类型既重复又容易在容器类型变化后失效。泛型函数还有另一个问题：有时需要取得一个表达式的准确类型，却不希望真的执行该表达式。
+
+C++11 用两个互补工具解决这些问题：
+
+- `auto` 从初始化表达式推导**将要声明的变量类型**；
+- `decltype` 查询一个名字或表达式的**类型结果**，通常不会执行表达式。
+
+两者都是编译期功能。变量在编译完成后仍有唯一、确定的静态类型，`auto` 不是动态类型。
+
+## `auto`：让初始化表达式决定类型
+
+最小语法如下：
+
+```text
+auto variable = expression;
+const auto& reference = expression;
+```
+
+`auto` 必须拥有足够的初始化信息，编译器先分析右侧表达式，再把推导结果代入声明。是否写 `&` 和 `const` 仍然是程序员的设计决定：`auto value` 通常取得一个值，`auto& value` 绑定可修改左值，`const auto& value` 建立只读引用并避免复制。
+
+## `decltype`：查询名字或表达式的类型
+
+`decltype` 接收一个名字或表达式：
+
+```text
+decltype(variable) another_variable = variable;
+decltype(function(argument)) result;
+```
+
+它最常用于尾置返回类型、类型断言和泛型库。需要特别注意括号：对未加括号的变量名，`decltype(name)` 返回声明时的类型；把左值表达式包在额外括号中，`decltype((name))` 通常得到左值引用。
+
+## 第一个完整示例
+
+下面的程序同时展示 `auto`、`const auto&` 和 `decltype`。先观察变量如何声明，再阅读输出和断言。
 
 ```cpp example id="cpp11-type-deduction" std="c++11" file="main.cpp" kind="single" compilers="all" output="6"
 #include <iostream>
@@ -31,17 +76,23 @@ int main() {
 }
 ```
 
-## 实践建议
+程序输出 `6`。`iterator` 的具体类型由 `values.begin()` 决定；`first` 是对第一个元素的只读引用，因此没有复制；`copy` 使用 `number` 的声明类型 `int`。两个 `static_assert` 在编译期验证括号表达式和显式引用的推导结果，若结论错误，程序不会生成可执行文件。
+
+## 入门阶段如何选择
 
 当类型由右侧表达式自然决定时使用 `auto`；当具体类型本身表达业务含义时保留显式类型。遍历容器中的大型对象时优先使用 `const auto&`，避免无意复制。
 
-## 易错点
+可以先采用三条简单规则：
+
+1. 只需要独立副本时写 `auto value`；
+2. 要修改原对象时写 `auto& value`；
+3. 只读且希望避免复制时写 `const auto& value`。
+
+这些规则覆盖常见局部变量和循环场景。泛型转发、代理引用和数组边界属于进阶情况，后文会单独解释。
+
+## 第一个常见陷阱：花括号
 
 `auto value = {1, 2, 3};` 推导为 `std::initializer_list<int>`，并非普通整数。不要仅为缩短一个清晰的基础类型而滥用 `auto`。
-
-## 学习目标
-
-读完本章后，应能判断 `auto` 是否保留 `const`、引用和数组属性，能解释 `decltype(x)` 与 `decltype((x))` 的差别，并能在泛型代码中选择值、左值引用或转发引用。
 
 ## 推导规则拆解
 
@@ -186,6 +237,7 @@ int main() {
 
 ## 权威资料
 
+- [GeeksforGeeks：auto 与 decltype](https://www.geeksforgeeks.org/cpp/type-inference-in-c-auto-and-decltype/)
 - [自动类型推导与占位类型](https://eel.is/c++draft/dcl.spec.auto)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

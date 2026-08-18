@@ -1,6 +1,23 @@
 # 容器增强
 
-C++11 增加了固定长度 `array`、哈希容器，以及直接在容器存储区构造元素的 `emplace` 系列接口。
+## 学习目标与旧容器的空缺
+
+C++03 已有 `vector`、`list`、`map` 等容器，但固定长度数组仍常用原生数组，哈希容器没有标准接口，单向链表依赖第三方实现，把对象放入容器还经常先构造临时对象再复制。
+
+C++11 增加 `array`、`forward_list`、无序关联容器和 `emplace` 系列接口。读完后，你应该能够根据连续性、查找方式、引用稳定性和构造成本选择它们，而不是只比较渐进复杂度。
+
+## 新设施速览
+
+| 设施 | 解决的问题 |
+| --- | --- |
+| `array<T, N>` | 为固定长度连续数组提供标准容器接口 |
+| `forward_list<T>` | 提供低额外开销的单向链表 |
+| `unordered_map/set` | 提供基于哈希的平均常数时间查找 |
+| `emplace` | 从构造参数直接建立容器元素 |
+
+## 第一个完整示例
+
+下面使用 `array` 保存固定数据，用 `unordered_map` 建立姓名到年龄的映射，并通过 `emplace` 构造键值元素。
 
 ```cpp example id="cpp11-containers" std="c++11" file="main.cpp" kind="single" compilers="all" output="Ada=37, sum=6"
 #include <array>
@@ -22,7 +39,7 @@ int main() {
 }
 ```
 
-`array` 大小属于类型的一部分且存储连续。无序容器只保证平均常数复杂度，不保证遍历顺序。`emplace` 可以避免临时对象，但并不天然比移动插入更快，应优先考虑可读性。
+程序输出 `Ada=37, sum=6`。`array` 大小属于类型的一部分且存储连续；无序容器只保证平均常数复杂度，不保证遍历顺序；`emplace` 可以避免某些临时对象，但并不天然比移动插入更快。
 
 ## `array` 的对象模型
 
@@ -41,6 +58,14 @@ array 是聚合，C++11 常见初始化写双层花括号以兼容聚合内含�
 `N` 参与类型，因此函数接收 `array<T, N>` 可在模板中取得编译期长度。标准还提供 `std::tuple_size`、`std::tuple_element` 和 `std::get<I>`，让固定数组参与元组式泛型访问；`I` 越界会在编译期失败。
 
 数组赋值会复制/移动所有元素，内建数组则不能整体赋值。这使 array 更适合作为值类型返回和类成员，但大 N 按值传参仍可能有真实复制成本。
+
+## `forward_list`：只保留向前链接
+
+`std::forward_list<T>` 是单向链表。节点只需要保存“下一个节点”链接，不提供反向迭代、`back()` 或常数时间 `size()`。它适合需要频繁在已知位置之后插入/删除、且希望降低双向链表节点开销的场景。
+
+单向结构使操作围绕“前一个位置”设计，因此提供 `before_begin()`、`insert_after()`、`erase_after()` 和 `splice_after()`。删除当前节点时必须持有它的前驱迭代器；这与 `list::erase(current)` 的接口不同。
+
+节点式存储通常保持未删除元素的引用和迭代器稳定，但遍历缓存局部性弱、每节点分配成本高。若主要操作是顺序遍历，小型数据即使在中间插入，`vector` 仍可能更快，应以访问模式和基准决定。
 
 ## 无序容器的典型实现
 
@@ -160,6 +185,7 @@ API 若只需要遍历，不应暴露具体容器类型；C++11 可用迭代器�
 
 ## 权威资料
 
+- [GeeksforGeeks：C++11 Standard](https://www.geeksforgeeks.org/cpp/cpp-11-standard/)
 - [容器库要求](https://eel.is/c++draft/containers)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

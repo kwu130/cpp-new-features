@@ -1,6 +1,47 @@
 # 范围 `for`
 
-范围 `for` 直接遍历数组或提供 `begin`/`end` 的对象，消除了手写迭代器边界的样板代码。
+## 学习目标与前置知识
+
+读者应先会使用普通 `for` 循环和迭代器。读完后，你应该能够：
+
+- 用范围 `for` 遍历数组和标准容器；
+- 根据“复制、只读、修改”三种意图选择循环变量；
+- 看懂编译器生成的 `begin`/`end` 循环；
+- 判断遍历期间修改容器是否会使迭代器失效；
+- 为自定义类型提供可遍历接口。
+
+## C++03 中的问题
+
+C++03 遍历容器通常要同时声明迭代器、取得终点、比较并递增：
+
+```text
+for (std::vector<int>::iterator it = values.begin();
+     it != values.end(); ++it) {
+    *it *= 2;
+}
+```
+
+循环的业务意图只是“处理每个元素”，大部分代码却在维护遍历机制。迭代器类型写错、边界来自另一个容器或忘记递增，都会造成错误。
+
+C++11 的范围 `for` 把这套固定模式交给编译器生成。它不是新的容器，也不会把循环变成运行时反射；底层仍是普通迭代器操作。
+
+## 最小语法与变量选择
+
+```text
+for (element-declaration : range-expression) {
+    statements
+}
+```
+
+先记住三种最常见写法：
+
+- `for (auto item : range)`：复制每个元素；
+- `for (auto& item : range)`：引用元素并允许修改；
+- `for (const auto& item : range)`：只读且通常不复制。
+
+## 第一个完整示例
+
+第一个循环把元素原地乘二，因此使用 `auto&`；第二个循环只负责输出，因此使用 `const auto&`。
 
 ```cpp example id="cpp11-range-for" std="c++11" file="main.cpp" kind="single" compilers="all" output="2 4 6"
 #include <iostream>
@@ -18,9 +59,9 @@ int main() {
 }
 ```
 
-只读遍历通常写成 `const auto&`，原地修改写成 `auto&`。直接写 `auto` 会复制每个元素。遍历期间不要执行可能使当前迭代器失效的容器修改操作。
+程序输出 `2 4 6`。如果第一个循环改成 `auto value`，修改的只是每轮产生的副本，容器仍保持 `1 2 3`。遍历期间不要执行可能让隐藏迭代器失效的扩容、删除或重排操作。
 
-## 学习目标与展开模型
+## 编译器如何展开范围 `for`
 
 范围 `for` 不是一种新的容器协议，而是编译器生成普通迭代器循环的语法糖。理解展开形式有助于判断生命周期、查找 `begin`/`end` 的方式以及修改容器时的风险。
 
@@ -163,6 +204,7 @@ vector 常用 erase-remove 惯用法批量删除；关联/链表容器常写 `it
 
 ## 权威资料
 
+- [GeeksforGeeks：Range-Based For Loop](https://www.geeksforgeeks.org/cpp/range-based-loop-c/)
 - [范围 for 语句](https://eel.is/c++draft/stmt.ranged)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

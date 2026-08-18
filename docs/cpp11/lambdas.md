@@ -1,6 +1,28 @@
 # Lambda 表达式
 
-Lambda 可以在使用位置定义匿名函数对象，非常适合算法、自定义回调和局部策略。
+## 学习目标与前置知识
+
+读者应先会普通函数、函数对象和 STL 算法。读完后，你应该能够写出 Lambda 的参数、返回类型和捕获列表，理解闭包对象的本质，并避免回调中的悬空引用和共享所有权环。
+
+## C++03 中的问题
+
+C++03 把一小段比较、过滤或回调逻辑交给算法时，通常要在远离调用位置的地方定义函数或函数对象类。代码阅读者需要来回寻找定义，函数对象若带状态还要手写构造函数和成员。
+
+C++11 的 Lambda 表达式允许在使用位置创建匿名函数对象，使局部策略与调用代码放在一起。它仍然是静态类型对象，编译器可以像普通函数对象一样内联优化。
+
+## 最小语法
+
+```text
+[captures](parameters) -> return_type {
+    statements
+}
+```
+
+捕获列表决定函数体如何访问外围自动变量：`[value]` 保存副本，`[&value]` 保存引用，`[]` 不捕获。返回类型简单时可省略尾置返回类型。
+
+## 第一个完整示例
+
+第一个 Lambda 按值捕获阈值并过滤元素；第二个 Lambda 按引用捕获计数器，记录算法调用次数。
 
 ```cpp example id="cpp11-lambdas" std="c++11" file="main.cpp" kind="single" compilers="all" output="12"
 #include <algorithm>
@@ -25,9 +47,9 @@ int main() {
 }
 ```
 
-优先显式列出捕获项，避免 `[&]` 或 `[=]` 在长生命周期回调中意外捕获对象。按值捕获默认不可修改；需要维护内部状态时可使用 `mutable`，但应留意它修改的是闭包内部副本。
+程序输出 `12`：过滤后元素为 `2, 3, 4`，和为 9，累加器被调用 3 次。优先显式列出捕获项，避免 `[&]` 或 `[=]` 在长生命周期回调中意外捕获对象。按值捕获默认不可修改；需要维护内部状态时可使用 `mutable`，但它修改的是闭包内部副本。
 
-## Lambda 到闭包类型
+## 底层模型：Lambda 会生成闭包类型
 
 编译器会为每个 Lambda 表达式生成一个唯一、不可直接命名的闭包类，并把函数体变成 `operator()`。即使文本完全相同，两个 Lambda 表达式的闭包类型也不同。`auto` 能直接保存具体闭包类型，因此通常比 `std::function` 更轻量。
 
@@ -171,6 +193,7 @@ int main() {
 
 ## 权威资料
 
+- [GeeksforGeeks：Lambda Expressions](https://www.geeksforgeeks.org/cpp/lambda-expression-in-c/)
 - [Lambda 表达式](https://eel.is/c++draft/expr.prim.lambda)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 
