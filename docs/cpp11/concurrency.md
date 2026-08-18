@@ -277,7 +277,6 @@ int main() {
 
 ## 权威资料
 
-- [GeeksforGeeks：Multithreading in C++](https://www.geeksforgeeks.org/cpp/multithreading-in-cpp/)
 - [线程支持库](https://eel.is/c++draft/thread)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

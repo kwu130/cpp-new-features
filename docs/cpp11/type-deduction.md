@@ -237,7 +237,6 @@ int main() {
 
 ## 权威资料
 
-- [GeeksforGeeks：auto 与 decltype](https://www.geeksforgeeks.org/cpp/type-inference-in-c-auto-and-decltype/)
 - [自动类型推导与占位类型](https://eel.is/c++draft/dcl.spec.auto)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

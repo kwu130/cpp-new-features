@@ -204,7 +204,6 @@ vector 常用 erase-remove 惯用法批量删除；关联/链表容器常写 `it
 
 ## 权威资料
 
-- [GeeksforGeeks：Range-Based For Loop](https://www.geeksforgeeks.org/cpp/range-based-loop-c/)
 - [范围 for 语句](https://eel.is/c++draft/stmt.ranged)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

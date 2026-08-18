@@ -197,8 +197,6 @@ C++11 在提供 Lambda、`bind` 和 `function` 的同时，正式弃用了多组
 
 ## 权威资料
 
-- [GeeksforGeeks：C++ tuple](https://www.geeksforgeeks.org/cpp/tuples-in-c/)
-- [GeeksforGeeks：旧 binders](https://www.geeksforgeeks.org/cpp/binders-in-cpp-stl/)
 - [函数对象与调用包装](https://eel.is/c++draft/function.objects)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

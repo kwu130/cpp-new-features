@@ -193,7 +193,6 @@ int main() {
 
 ## 权威资料
 
-- [GeeksforGeeks：Lambda Expressions](https://www.geeksforgeeks.org/cpp/lambda-expression-in-c/)
 - [Lambda 表达式](https://eel.is/c++draft/expr.prim.lambda)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

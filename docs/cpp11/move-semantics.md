@@ -220,7 +220,6 @@ int main() {
 
 ## 权威资料
 
-- [GeeksforGeeks：Move Semantics and Rvalue References](https://www.geeksforgeeks.org/cpp/stdmove-in-utility-in-c-move-semantics-move-constructors-and-move-assignment-operators/)
 - [引用与引用折叠](https://eel.is/c++draft/dcl.ref)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

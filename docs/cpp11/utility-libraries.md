@@ -209,7 +209,6 @@ int main() {
 
 ## 权威资料
 
-- [GeeksforGeeks：`shuffle` 与 `random_shuffle`](https://www.geeksforgeeks.org/cpp/shuffle-vs-random_shuffle-c/)
 - [时间工具](https://eel.is/c++draft/time)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

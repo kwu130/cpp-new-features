@@ -204,7 +204,6 @@ C++11 没有删除旧代码依赖的隐式复制，但开始弃用部分“只�
 
 ## 权威资料
 
-- [GeeksforGeeks：C++ enum class](https://www.geeksforgeeks.org/cpp/enum-classes-in-c-and-their-advantage-over-enum-datatype/)
 - [类与特殊成员函数](https://eel.is/c++draft/class)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

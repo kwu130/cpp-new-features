@@ -209,8 +209,6 @@ C++11 聚合定义比后续版本更严格，默认成员初始化器等特性�
 
 ## 权威资料
 
-- [GeeksforGeeks：Uniform Initialization](https://www.geeksforgeeks.org/cpp/uniform-initialization-in-c/)
-- [GeeksforGeeks：Null Pointer](https://www.geeksforgeeks.org/cpp/null-pointer-in-cpp/)
 - [列表初始化](https://eel.is/c++draft/dcl.init.list)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

@@ -227,7 +227,6 @@ C++11 标准化了 `[[attribute]]` 语法。属性为编译器和分析工具提
 
 ## 权威资料
 
-- [GeeksforGeeks：C++11 Standard](https://www.geeksforgeeks.org/cpp/cpp-11-standard/)
 - [异常规格](https://eel.is/c++draft/except.spec)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

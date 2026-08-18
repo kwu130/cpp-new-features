@@ -172,7 +172,6 @@ constexpr 属于函数声明契约的一部分，声明和定义必须一致。�
 
 ## 权威资料
 
-- [GeeksforGeeks：constexpr](https://www.geeksforgeeks.org/cpp/understanding-constexper-specifier-in-cpp/)
 - [constexpr 与常量表达式](https://eel.is/c++draft/dcl.constexpr)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

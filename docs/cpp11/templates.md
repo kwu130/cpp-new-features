@@ -214,7 +214,6 @@ int main() {
 
 ## 权威资料
 
-- [GeeksforGeeks：Variadic Templates](https://www.geeksforgeeks.org/cpp/variadic-function-templates-c/)
 - [可变参数模板](https://eel.is/c++draft/temp.variadic)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

@@ -482,8 +482,6 @@ int main() {
 
 ## 权威资料
 
-- [GeeksforGeeks：C++ Smart Pointers](https://www.geeksforgeeks.org/cpp/smart-pointers-cpp/)
-- [GeeksforGeeks：`auto_ptr`](https://www.geeksforgeeks.org/cpp/auto-ptr-in-cpp/)
 - [智能指针库规范](https://eel.is/c++draft/mem)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 

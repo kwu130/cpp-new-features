@@ -185,7 +185,6 @@ API 若只需要遍历，不应暴露具体容器类型；C++11 可用迭代器�
 
 ## 权威资料
 
-- [GeeksforGeeks：C++11 Standard](https://www.geeksforgeeks.org/cpp/cpp-11-standard/)
 - [容器库要求](https://eel.is/c++draft/containers)
 - [CPP11 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2012/n3337.pdf)
 
