@@ -1,6 +1,31 @@
 # `shared_timed_mutex` 与 `exchange`
 
-`shared_timed_mutex` 允许多个读者共享锁或单个写者独占锁，并支持定时等待。`exchange` 用新值替换对象并返回旧值，常用于移动操作和状态机。
+## 学习目标与本篇范围
+
+C++14 的库增强不像泛型 Lambda 那样集中在一个语法点。本篇围绕高频设施组织：共享定时互斥量与 `shared_lock`、状态替换工具 `exchange`、透明比较器带来的异构查找，以及若干小型 I/O/类型工具。
+
+读完后，你应该能够：
+
+- 区分共享读锁和独占写锁；
+- 判断读写锁是否真的优于普通 `mutex`；
+- 用 `std::exchange` 表达“写入新值并取得旧值”；
+- 使用透明比较器避免查询时构造临时键；
+- 避免把普通 `exchange` 误当作原子同步操作。
+
+## 两个核心设施的最小语法
+
+```text
+std::shared_timed_mutex mutex;
+std::shared_lock<std::shared_timed_mutex> read_lock(mutex);
+
+State previous = std::exchange(current, replacement);
+```
+
+共享互斥量负责跨线程同步；`std::exchange` 只是普通对象操作，除非外部已有锁或对象本身只由一个线程访问，否则不能保证线程安全。
+
+## 第一个完整示例
+
+程序先持独占锁把状态从 1 替换成 2，并取得旧值，再持共享锁读取当前状态。
 
 ```cpp example id="cpp14-library-enhancements" std="c++14" file="main.cpp" kind="single" compilers="all" output="old=1, current=2"
 #include <iostream>
@@ -23,7 +48,7 @@ int main() {
 }
 ```
 
-读写锁只在读操作占绝大多数且临界区值得其额外开销时更有优势。`exchange` 不负责同步，共享状态仍需要锁或适当的原子操作。
+程序输出 `old=1, current=2`。读写锁只在读操作占绝大多数、临界区足以抵消额外协调成本时可能更有优势；是否公平、是否让写者饥饿由实现和工作负载共同决定。
 
 ## 共享互斥模型
 

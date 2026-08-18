@@ -1,6 +1,25 @@
 # `integer_sequence`
 
-`integer_sequence` 和 `index_sequence` 在编译期表示整数序列，常用于按索引展开元组或参数包。
+## 学习目标与问题背景
+
+参数包可以展开，却没有内建下标。面对 `tuple<Ts...>` 时，库作者知道元素数量，却不能在运行时循环中把变量 `i` 传给要求编译期常量的 `std::get<i>`。
+
+C++14 的 `integer_sequence` 把一组整数放进类型参数列表，`index_sequence` 则专门使用 `std::size_t` 索引。读完后，你应该能够生成 `0..N-1` 索引包、按索引展开元组，并理解序列对象为何通常没有运行时状态。
+
+## 最小语法
+
+```text
+std::integer_sequence<int, 0, 1, 2>
+std::index_sequence<0, 1, 2>
+std::make_index_sequence<3>
+std::index_sequence_for<TypeA, TypeB, TypeC>
+```
+
+调用者通常不应手写这些类型；公共包装函数根据 tuple 或参数包长度生成索引，再把实现细节委托给接收序列标签的辅助函数。
+
+## 第一个完整示例
+
+外层 `print_tuple` 只接收元组，内部通过 `index_sequence_for` 生成索引并展开每个 `get<Index>`。
 
 ```cpp example id="cpp14-integer-sequence" std="c++14" file="main.cpp" kind="single" compilers="all" output="Ada 37"
 #include <cstddef>
@@ -27,7 +46,7 @@ int main() {
 }
 ```
 
-这种展开方式在 C++17 中通常可由折叠表达式简化。编写公共接口时优先隐藏索引序列，让调用者只面对普通参数。
+程序输出 `Ada 37`。二元素元组使 `Indexes...` 成为 `0, 1`；初始化列表技巧保证两个输出表达式按顺序执行。C++17 折叠表达式能简化有序展开，但索引序列仍用于把类型包位置带入表达式。
 
 ## 编译期序列是什么
 

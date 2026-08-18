@@ -1,6 +1,28 @@
 # `make_unique`
 
-`make_unique` 补齐了 C++11 智能指针工厂：它直接构造对象并返回 `unique_ptr`，避免显式出现 `new`。
+## 学习目标与 C++11 的空缺
+
+C++11 提供 `unique_ptr` 和 `make_shared`，却没有与之对应的标准 `make_unique`。创建独占对象时仍常写 `std::unique_ptr<T>(new T(args...))`，类型名称重复，裸 `new` 暂时暴露在调用表达式中，也不利于统一代码审查规则。
+
+C++14 补上 `std::make_unique`。读完后，你应该能够：
+
+- 为单对象和未知界数组选择正确重载；
+- 理解完美转发、值初始化和异常安全；
+- 知道私有构造、自定义删除器和 allocator 场景为何不能直接使用它；
+- 区分 `make_unique` 与 `make_shared` 的分配和所有权模型。
+
+## 最小语法与选择规则
+
+```text
+auto object = std::make_unique<Type>(constructor_arguments...);
+auto array = std::make_unique<Element[]>(count);
+```
+
+一般单对象优先使用 `make_unique`。需要自定义删除器、特殊分配资源或接管既有裸指针时，才直接构造带明确删除策略的 `unique_ptr`。
+
+## 第一个完整示例
+
+下面把构造参数直接转发给 `Person`，返回值立即拥有新对象，不在调用点暴露裸指针。
 
 ```cpp example id="cpp14-make-unique" std="c++14" file="main.cpp" kind="single" compilers="all" output="Ada:37"
 #include <iostream>
@@ -24,7 +46,7 @@ int main() {
 }
 ```
 
-一般对象优先使用 `make_unique`。只有需要自定义删除器、从既有裸指针接管所有权等场景才直接构造 `unique_ptr`。
+程序输出 `Ada:37`。`person` 的静态类型是 `std::unique_ptr<Person>`；离开作用域时自动销毁 `Person`。工厂不改变构造函数访问规则，也不会让对象变成共享所有权。
 
 ## 为什么工厂函数更安全
 

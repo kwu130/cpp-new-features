@@ -1,6 +1,31 @@
 # 泛型 Lambda 与初始化捕获
 
-泛型 Lambda 可以用 `auto` 声明参数，本质上生成带模板调用运算符的闭包。初始化捕获允许在捕获列表中创建成员，尤其适合把只移动对象交给回调。
+## 学习目标与 C++11 的限制
+
+C++11 Lambda 已能在调用位置定义闭包，但参数类型必须明确写出，捕获项也只能直接引用外围已有变量。要编写支持多种类型的局部函数对象，仍需定义命名的函数对象模板；要把 `unique_ptr` 移入闭包，也缺少在捕获列表中创建新成员的语法。
+
+C++14 增加两项互补能力：
+
+- 泛型 Lambda 允许形参写 `auto`，编译器为调用运算符生成成员函数模板；
+- 初始化捕获允许写 `name = expression`，用表达式直接初始化闭包成员。
+
+读完后，你应该能够使用 `auto`、`auto&`、`auto&&` 泛化 Lambda 参数，安全移动捕获资源，并理解闭包的复制能力、实例化成本和生命周期。
+
+## 最小语法
+
+```text
+auto compare = [](const auto& left, const auto& right) {
+    return left < right;
+};
+
+auto task = [resource = std::move(pointer)] {
+    return *resource;
+};
+```
+
+## 第一个完整示例
+
+`add` 可以接受不同的可加类型；`calculate` 把 `unique_ptr` 的所有权移入闭包，而不是保存外围变量的悬空引用。
 
 ```cpp example id="cpp14-lambdas" std="c++14" file="main.cpp" kind="single" compilers="all" output="42"
 #include <iostream>
@@ -17,7 +42,7 @@ int main() {
 }
 ```
 
-初始化捕获的名称属于闭包对象，而不属于外围作用域。移动捕获会使闭包通常只能移动；若把它放入要求可复制目标的 C++14 `std::function`，会发生编译错误。
+程序输出 `42`。构造 `calculate` 后，外围 `value` 已不再拥有整数；`owned` 是闭包成员。移动捕获会使闭包通常只能移动，因而不能直接放入 C++14 要求目标可复制的 `std::function`。
 
 ## 泛型 Lambda 的转换模型
 

@@ -1,6 +1,26 @@
 # 返回类型推导与 `decltype(auto)`
 
-C++14 允许普通函数使用 `auto` 推导返回类型。`decltype(auto)` 按 `decltype` 规则保留引用和值类别，适合编写透明包装器。
+## 学习目标与 C++11 的限制
+
+C++11 允许 Lambda 在部分情况下推导返回类型，普通函数若想让返回类型依赖表达式，通常要写尾置返回 `auto function(...) -> decltype(expression)`。这在泛型包装器中准确但冗长，而且函数名和表达式容易重复。
+
+C++14 允许普通函数用 `auto` 从 `return` 推导返回值类型，并引入 `decltype(auto)` 按 `decltype` 规则保留引用和值类别。读完后，你应该能够：
+
+- 判断 `auto` 返回的是独立值还是引用；
+- 用 `decltype(auto)` 编写透明访问器；
+- 识别括号导致的引用返回和局部悬空；
+- 处理多分支、递归函数和接口可见性限制。
+
+## 两种写法的直观区别
+
+```text
+auto value() { return expression; }            // 类似 auto 变量推导，通常返回值
+decltype(auto) access() { return (expression); } // 按 decltype 规则，可能返回引用
+```
+
+## 第一个完整示例
+
+`answer` 返回独立整数；`first` 则透明保留 `container.front()` 的左值引用，因此调用方可以通过返回结果修改容器。
 
 ```cpp example id="cpp14-return-deduction" std="c++14" file="main.cpp" kind="single" compilers="all" output="9"
 #include <iostream>
@@ -27,7 +47,7 @@ int main() {
 }
 ```
 
-返回类型推导要求同一函数中的所有返回语句推导出一致类型。使用 `decltype(auto)` 时，表达式外是否有括号可能改变结果；不要返回局部变量的引用。
+程序输出 `9`。两个编译期断言分别证明 `first(values)` 是 `int&`、`answer()` 是 `int`。返回类型推导要求所有有效 `return` 推导出一致类型；使用 `decltype(auto)` 时，额外括号可能改变结果，绝不能返回局部变量引用。
 
 ## `auto` 返回值推导
 
