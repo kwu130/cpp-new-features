@@ -46,17 +46,17 @@ int main() {
 
 计数不得减到零以下。没有方法增加或重置 latch，所有参与者和异常路径必须在创建时规划完成。计数为零的 latch 从一开始就开放，后续 wait 立即返回。
 
-`max()` 给出实现支持的最大计数下界/能力，构造值和一次 count_down 更新都要位于有效范围。latch 对象本身必须活到所有 count_down/wait 操作结束；线程只捕获引用而外层提前销毁是直接生命周期错误。
+`max()` 给出实现支持的最大计数下界/能力，构造值和一次 `count_down` 更新都要位于有效范围。latch 对象本身必须活到所有 `count_down`/wait 操作结束；线程只捕获引用而外层提前销毁是直接生命周期错误。
 
 `arrive_and_wait(n)` 适合当前参与者代表多个完成单位，但 n 仍不能超过剩余计数。把任务数和线程数混为一个计数常导致异常路径无法补偿；应明确每次 decrement 对应“任务完成”还是“参与者到达”。
 
 ### `barrier` 阶段
 
-barrier 构造时给出预计参与数和可选 completion function。每次 `arrive` 返回 arrival_token，线程可稍后用 `wait(token)` 等待该阶段完成；`arrive_and_wait` 合并两步；`arrive_and_drop` 到达当前阶段并永久减少未来阶段预计数。
+barrier 构造时给出预计参与数和可选 completion function。每次 `arrive` 返回 `arrival_token`，线程可稍后用 `wait(token)` 等待该阶段完成；`arrive_and_wait` 合并两步；`arrive_and_drop` 到达当前阶段并永久减少未来阶段预计数。
 
 最后一个到达使阶段完成，并在规定上下文执行 completion，然后解除等待者并开始下一阶段。completion 必须满足不抛要求，其副作用可作为阶段间状态转换。不要假定固定某个工作线程执行它。
 
-arrival_token 与产生它的 barrier 及特定阶段绑定，是移动专用阶段凭证。`arrive()` 后线程已经贡献到达但可先做不依赖本阶段完成的工作，稍后 `wait(std::move(token))`；token 不能复制给多个等待者，也不能留到错误阶段复用。
+`arrival_token` 与产生它的 barrier 及特定阶段绑定，是移动专用阶段凭证。`arrive()` 后线程已经贡献到达但可先做不依赖本阶段完成的工作，稍后 `wait(std::move(token))`；token 不能复制给多个等待者，也不能留到错误阶段复用。
 
 completion 的结束是阶段切换的一部分。它可以汇总本阶段结果或交换双缓冲索引，但执行期间所有参与者仍未从等待返回。completion 若执行阻塞 I/O，会把每个阶段的尾延迟放大到所有参与者。
 
@@ -121,7 +121,7 @@ barrier 的阶段同步适合双缓冲：参与者只写当前缓冲区，阶段
 
 条件变量需要互斥量和显式谓词循环，能表达队列非空、状态枚举等任意条件。信号量内部保存许可，所以 release 可先于 acquire，不会像无谓词通知那样丢失；但它只表达数量，不表达复杂状态。
 
-一次性“所有初始化任务完成”用 latch；每轮迭代所有工作者汇合用 barrier；最多 N 个并发访问或 N 项可消费资源用 semaphore。用 binary_semaphore 模拟 mutex 时要自己保证释放配对和异常安全，普通 mutex RAII 通常更好。
+一次性“所有初始化任务完成”用 latch；每轮迭代所有工作者汇合用 barrier；最多 N 个并发访问或 N 项可消费资源用 semaphore。用 `binary_semaphore` 模拟 mutex 时要自己保证释放配对和异常安全，普通 mutex RAII 通常更好。
 
 future/promise 适合传递一次结果或异常，latch 只传递完成事件没有值。选择原语时也要考虑错误传播和取消，而不只看唤醒功能。
 
@@ -129,7 +129,7 @@ future/promise 适合传递一次结果或异常，latch 只传递完成事件�
 
 参与者在到达前异常退出，会让 latch/barrier 永远等不到目标计数。线程创建失败、提前返回和取消路径必须显式补偿计数或采用 RAII 到达守卫。完成函数应短小且不抛异常。
 
-barrier 的 arrival_token 代表特定阶段，必须交给对应 barrier 的等待且不能错误复用。把 token 遗失同时又要求该线程等待，会破坏控制流设计；移动 token 后原对象不再表示有效到达。
+barrier 的 `arrival_token` 代表特定阶段，必须交给对应 barrier 的等待且不能错误复用。把 token 遗失同时又要求该线程等待，会破坏控制流设计；移动 token 后原对象不再表示有效到达。
 
 `arrive_and_drop` 适合线程永久退出迭代，但临时跳过一轮不能用 drop，否则下一阶段参与数永久减少。动态工作者加入不受 barrier 直接支持，需要在阶段外重建同步结构或采用其他调度模型。
 
@@ -155,7 +155,7 @@ latch/barrier 共享计数会形成缓存热点。把非常细粒度循环每次
 | `count_down(n)` | 减少计数但不等待，不得减过零 |
 | `arrive_and_wait` | 对 latch 减少后等待；对 barrier 到达当前阶段等待 |
 | `barrier(n,completion)` | 可重复阶段，每阶段完成一次 completion |
-| `arrive()` | 返回绑定当前阶段的移动 arrival_token |
+| `arrive()` | 返回绑定当前阶段的移动 `arrival_token` |
 | `arrive_and_drop` | 到达当前阶段并永久减少未来参与数 |
 | `counting_semaphore<N>` | 维护许可数量，不维护线程所有权 |
 | `binary_semaphore` | 单许可用途，但仍不是带所有者的 mutex |
@@ -165,10 +165,10 @@ latch/barrier 共享计数会形成缓存热点。把非常细粒度循环每次
 ## 同步原语专项审查问题
 
 - latch 初始计数是否对应任务数而非模糊的线程数？
-- 所有异常/提前返回路径是否仍 count_down/到达？
+- 所有异常/提前返回路径是否仍 `count_down`/到达？
 - barrier 每阶段参与者是否恰好到达一次？
-- arrival_token 是否只用于其所属 barrier 和阶段？
-- 临时缺席是否错误使用 arrive_and_drop 永久退出？
+- `arrival_token` 是否只用于其所属 barrier 和阶段？
+- 临时缺席是否错误使用 `arrive_and_drop` 永久退出？
 - completion 是否不抛、短小且不假定固定执行线程？
 - semaphore release 是否可能超过逻辑/实现最大许可？
 - acquire 后异常路径是否用 RAII 归还许可？

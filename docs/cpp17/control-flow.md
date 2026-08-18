@@ -124,7 +124,7 @@ int main() {
 
 ## 结构化绑定的协议选择顺序
 
-数组协议优先于类协议。对非数组类 E，若 `std::tuple_size<E>` 是完整且其 `value` 形成良好常量表达式，就选择 tuple-like 协议；即使 `get`/`tuple_element` 后续不完整，也不会退回公共成员分解。错误特化 tuple_size 会“锁定”错误路径。
+数组协议优先于类协议。对非数组类 E，若 `std::tuple_size<E>` 是完整且其 `value` 形成良好常量表达式，就选择 tuple-like 协议；即使 `get`/`tuple_element` 后续不完整，也不会退回公共成员分解。错误特化 `tuple_size` 会“锁定”错误路径。
 
 tuple-like 路径先看类成员查找是否找到合适名称 get；找到后使用 `e.get<I>()`，否则只做 ADL 的 `get<I>(e)`，普通非限定查找不参与。把一个无关 get 成员放入类中可能改变结构化绑定结果。
 
@@ -162,7 +162,7 @@ discarded statement 中的 return 不参与当前实例的 auto 返回类型推�
 | `auto& [a,b] = obj` | 绑定原对象，可经非 const 名称修改 |
 | `const auto& [a,b]` | 只读绑定，可延长合适临时的生命周期 |
 | 数组协议 | 按数组元素顺序绑定 |
-| tuple-like 协议 | 依赖 tuple_size、tuple_element 与 get 一致 |
+| tuple-like 协议 | 依赖 `tuple_size`、`tuple_element` 与 get 一致 |
 | 成员协议 | 在满足条件时按可访问成员声明顺序绑定 |
 | `if (init; cond)` | init 名称作用域覆盖条件及两个分支 |
 | `switch (init; cond)` | init 对象在整个 switch 结束后析构 |
@@ -172,7 +172,7 @@ discarded statement 中的 return 不参与当前实例的 auto 返回类型推�
 ## 控制流专项审查问题
 
 - 结构化绑定是否错误复制了本应修改的对象？
-- tuple_size 特化存在后，get/tuple_element 协议是否完整一致？
+- `tuple_size` 特化存在后，get/`tuple_element` 协议是否完整一致？
 - 私有成员或基类布局是否使成员绑定路径不可用？
 - C++17 是否误捕获结构化绑定名进入 Lambda？
 - init-statement 对象析构时点是否覆盖两个分支？

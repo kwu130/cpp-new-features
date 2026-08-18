@@ -76,9 +76,9 @@ int main() {
 
 ### 所有权环
 
-对象把回调保存为成员，而回调捕获该对象 shared_ptr，会形成 `object -> callback -> shared_ptr<object>` 环。改捕获 weak_ptr，在调用时 lock 并处理对象已销毁，可打破环。
+对象把回调保存为成员，而回调捕获该对象 `shared_ptr`，会形成 `object -> callback -> shared_ptr<object>` 环。改捕获 `weak_ptr`，在调用时 lock 并处理对象已销毁，可打破环。
 
-weak_ptr 方案会使回调可能什么也不做，接口应定义注销/失效语义。并发销毁时 lock 获得的 shared_ptr 保证此次调用期间对象存活，但对象内部线程安全仍需另外保证。
+`weak_ptr` 方案会使回调可能什么也不做，接口应定义注销/失效语义。并发销毁时 lock 获得的 `shared_ptr` 保证此次调用期间对象存活，但对象内部线程安全仍需另外保证。
 
 ## 调用与性能模型
 

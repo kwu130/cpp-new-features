@@ -237,26 +237,26 @@ C++20 协程语言本身没有取消令牌。可把 `stop_token`、取消槽或�
 
 | 钩子/设施 | 关键职责 |
 | --- | --- |
-| `coroutine_traits` | 从返回类型和参数确定 promise_type |
+| `coroutine_traits` | 从返回类型和参数确定 `promise_type` |
 | `get_return_object` | 创建交给调用者的任务/生成器外壳 |
 | `initial_suspend` | 决定 eager 运行还是 lazy 初始挂起 |
-| `return_value/void` | 接收 co_return 结果 |
+| `return_value/void` | 接收 `co_return` 结果 |
 | `unhandled_exception` | 接收逃出协程体的异常 |
 | `final_suspend` | 决定完成后的续体和帧销毁边界 |
 | `await_ready` | true 时跳过挂起直接取结果 |
 | `await_suspend` | 发布句柄/调度恢复，可返回 void、bool 或句柄 |
-| `await_resume` | 产生 co_await 结果或重抛错误 |
+| `await_resume` | 产生 `co_await` 结果或重抛错误 |
 | `coroutine_handle` | 非拥有帧句柄，复制不增加所有权 |
 | `resume()` | 只对合法挂起且未完成协程调用 |
 | `destroy()` | 恰好一次销毁挂起帧并析构内部对象 |
 
 ## Coroutines 专项审查问题
 
-- 返回对象是否明确拥有或仅观察 coroutine_handle？
+- 返回对象是否明确拥有或仅观察 `coroutine_handle`？
 - 每个帧是否恰好 destroy 一次，并避免完成后再次 resume？
 - 引用参数和跨挂起局部引用的目标是否持续存活？
 - initial/final suspend 的 eager/lazy 与自销毁策略是否写入契约？
-- await_suspend 发布句柄后是否还访问可能已销毁的 awaiter？
+- `await_suspend` 发布句柄后是否还访问可能已销毁的 awaiter？
 - 快速 ready 路径和真正挂起路径是否返回相同结果/异常语义？
 - 完成、超时与取消竞争是否只允许一个恢复者？
 - 外部 I/O 回调是否在帧销毁前撤销或隔离？
@@ -266,13 +266,13 @@ C++20 协程语言本身没有取消令牌。可把 `stop_token`、取消槽或�
 ## 协程故障定位线索
 
 - 帧泄漏：确认最终挂起的拥有任务析构是否调用 destroy。
-- 二次释放：检查自销毁 final_suspend 与外部拥有者是否同时销毁。
-- 首行未执行：initial_suspend 采用 lazy 策略，需要首次 resume/await。
+- 二次释放：检查自销毁 `final_suspend` 与外部拥有者是否同时销毁。
+- 首行未执行：`initial_suspend` 采用 lazy 策略，需要首次 resume/await。
 - 回调后 use-after-free：外部完成事件仍保存已销毁帧句柄。
 - 偶发二次 resume：完成、取消、超时缺少唯一获胜状态机。
-- 异常消失：检查 unhandled_exception 存储及 await_resume 重抛路径。
+- 异常消失：检查 `unhandled_exception` 存储及 `await_resume` 重抛路径。
 - 栈持续增长：同步任务链未使用适当对称转移 continuation。
-- 锁死：普通 mutex 被跨 co_await 持有或在不同线程恢复后释放。
+- 锁死：普通 mutex 被跨 `co_await` 持有或在不同线程恢复后释放。
 - 引用悬空：协程引用形参没有复制调用者对象进帧。
 - 线程不符合预期：记录每个 awaiter 把 continuation 提交到哪个执行器。
 

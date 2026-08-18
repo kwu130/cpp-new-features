@@ -148,7 +148,7 @@ int main() {
 | 空状态 | `nullopt` | 可用 monostate 建模 | 默认构造/`reset` |
 | 查询 | `has_value` | `index`/`holds_alternative` | `has_value`/`type` |
 | 安全探测 | 布尔判断 | `get_if` | 指针版 `any_cast` |
-| 错误访问 | `value` 抛 bad_optional_access | `get` 抛 bad_variant_access | 值版 any_cast 抛 bad_any_cast |
+| 错误访问 | `value` 抛 `bad_optional_access` | `get` 抛 `bad_variant_access` | 值版 `any_cast` 抛 `bad_any_cast` |
 | 原位构造 | `emplace` | `emplace<I/T>` | `emplace<T>` |
 | 存储模型 | 通常内联 T + 状态 | 最大备选内联存储 + 索引 | 小对象优化或堆由实现决定 |
 | 穷尽处理 | 单一值分支 | `visit` 可编译期覆盖备选 | 调用方运行期约定类型 |
@@ -159,13 +159,13 @@ int main() {
 
 - “缺失”是否需要错误原因，optional 是否信息不足？
 - optional 解引用前是否有状态证明？
-- optional<reference_wrapper<T>> 的目标是否持续存活？
+- `optional<reference_wrapper<T>>` 的目标是否持续存活？
 - variant 第一备选是否支持预期默认构造？
 - 转换构造是否因多个备选隐式转换而歧义？
 - 访问者是否覆盖全部备选及多 variant 笛卡尔积？
-- 是否处理 valueless_by_exception 而非假定永不发生？
+- 是否处理 `valueless_by_exception` 而非假定永不发生？
 - any 所存类型是否满足可复制要求？
-- any_cast 是否要求精确类型而代码却期待数值转换？
+- `any_cast` 是否要求精确类型而代码却期待数值转换？
 - any 是否错误跨越不稳定 RTTI/标准库 ABI 边界？
 
 ## 权威资料

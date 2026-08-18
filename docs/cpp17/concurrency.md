@@ -134,9 +134,9 @@ C++17 `shared_mutex` 提供共享和独占模式但不要求定时接口，相�
 
 | 设施 | 关键语义 |
 | --- | --- |
-| `scoped_lock(m)` | 单锁词法 RAII，类似简化 lock_guard |
+| `scoped_lock(m)` | 单锁词法 RAII，类似简化 `lock_guard` |
 | `scoped_lock(m1,m2,...)` | 用死锁避免算法取得全部锁 |
-| 零参数 scoped_lock | 合法无操作守卫，便利泛型代码 |
+| 零参数 `scoped_lock` | 合法无操作守卫，便利泛型代码 |
 | `adopt_lock` 构造 | 要求调用方已经拥有全部锁 |
 | `shared_mutex::lock` | 取得独占写锁 |
 | `lock_shared` | 取得共享读锁 |
@@ -147,10 +147,10 @@ C++17 `shared_mutex` 提供共享和独占模式但不要求定时接口，相�
 
 ## C++17 锁专项审查问题
 
-- 是否一次把完整锁集合交给 scoped_lock？
-- adopt_lock 前是否确实已拥有所有锁？
+- 是否一次把完整锁集合交给 `scoped_lock`？
+- `adopt_lock` 前是否确实已拥有所有锁？
 - 运行期扩展锁集合是否仍可能形成架构级锁环？
-- shared_mutex 是否真的读多写少且临界区足够大？
+- `shared_mutex` 是否真的读多写少且临界区足够大？
 - 是否错误假定读写锁公平或写者不会饥饿？
 - 共享锁升级时是否释放后在独占锁下重新检查？
 - 返回引用/迭代器后是否已经释放保护锁？
@@ -160,7 +160,7 @@ C++17 `shared_mutex` 提供共享和独占模式但不要求定时接口，相�
 
 ## 权威资料
 
-- [P0156R2：scoped_lock](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0156r2.html)
+- [P0156R2：`scoped_lock`](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0156r2.html)
 - [工作草案：Mutex requirements](https://eel.is/c++draft/thread.mutex.requirements)
 - [CPP17 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0636r3.html)
 

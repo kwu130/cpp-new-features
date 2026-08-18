@@ -30,13 +30,13 @@ int main() {
 
 解析协议固定 ASCII 标记时它们很合适；处理用户自然语言、文件系统大小写或组合 Unicode 字符时需要更高层文本库。后缀名判断也不等于安全文件类型验证。
 
-`basic_string` 和 `basic_string_view` 都提供这些成员。字符重载只比较一个元素；字符串/视图重载按 char_traits 的序列比较。空前缀和空后缀总能匹配任何字符串，包括空字符串。
+`basic_string` 和 `basic_string_view` 都提供这些成员。字符重载只比较一个元素；字符串/视图重载按 `char_traits` 的序列比较。空前缀和空后缀总能匹配任何字符串，包括空字符串。
 
 实现通常先比较长度，再调用 traits compare 或等价循环，不创建子字符串。相较 `find(prefix)==0`，接口直接表达方向，也避免后缀检查中的无符号减法边界。
 
-它们不消费输入。解析器若匹配后还要前进，可在确认 starts_with 后对 string_view 调用 `remove_prefix`；拥有 string 直接 erase 会移动字符，频繁解析更适合视图游标。
+它们不消费输入。解析器若匹配后还要前进，可在确认 `starts_with` 后对 `string_view` 调用 `remove_prefix`；拥有 string 直接 erase 会移动字符，频繁解析更适合视图游标。
 
-路径后缀应优先使用 filesystem::path 的 extension/stem 语义，并了解多重扩展；字符串 ends_with 只适合协议 token 或已经定义为纯字符规则的场景。
+路径后缀应优先使用 filesystem::path 的 extension/stem 语义，并了解多重扩展；字符串 `ends_with` 只适合协议 token 或已经定义为纯字符规则的场景。
 
 ## 关联容器 `contains`
 
@@ -44,15 +44,15 @@ int main() {
 
 若检查后立即再次 `at` 或 `find`，会做两次查找且并发外部修改时可能有竞态。需要元素时直接保存一次 `find` 结果；只需布尔判断才用 `contains`。
 
-有序 `map/set` 及多重版本、无序关联容器都获得 contains。多重容器只回答至少存在一个等价键，不返回数量；需要数量用 count，需要遍历全部等价元素用 equal_range。
+有序 `map/set` 及多重版本、无序关联容器都获得 contains。多重容器只回答至少存在一个等价键，不返回数量；需要数量用 count，需要遍历全部等价元素用 `equal_range`。
 
 ### 异构查找
 
-有序容器比较器提供 `is_transparent`（例如 `std::less<>`），且能比较查询类型与 key_type 时，contains 可接受异构键。这样 `map<string, ...>` 能用 string_view 或 `const char*` 查询而不构造临时 string。
+有序容器比较器提供 `is_transparent`（例如 `std::less<>`），且能比较查询类型与 `key_type` 时，contains 可接受异构键。这样 `map<string, ...>` 能用 `string_view` 或 `const char*` 查询而不构造临时 string。
 
 无序容器的异构查找还要求哈希器和相等器透明，并保证不同表示的等价值产生相同哈希。只把 equality 设透明、却让 hash 按不同编码计算，会破坏桶查找。
 
-透明比较不是自动免分配保证；比较器/哈希器实现仍可能构造对象。标准设施配合 string/string_view 通常能直接观察字符，用户类型应为所有组合写一致测试。
+透明比较不是自动免分配保证；比较器/哈希器实现仍可能构造对象。标准设施配合 string/`string_view` 通常能直接观察字符，用户类型应为所有组合写一致测试。
 
 contains 是 const 查询，但并发安全规则不变：多个只读操作可并发，任何线程修改容器时仍需外部同步。contains 后再访问也不是原子“检查并使用”。
 
@@ -76,7 +76,7 @@ int main() {
 
 非成员 `erase` 封装了顺序容器的 erase-remove 惯用法并返回删除数量。它不是只删除第一个匹配项；示例的三个 2 全部移除，剩余元素顺序保持为 1、3。
 
-不同容器的实现策略沿用其结构：vector/string 移动压缩并擦除尾部，list/forward_list 可逐节点删除，关联容器主要提供 erase_if 而不是按 mapped/value 的统一 erase。接口名字统一不代表复杂度或失效规则统一。
+不同容器的实现策略沿用其结构：vector/string 移动压缩并擦除尾部，list/`forward_list` 可逐节点删除，关联容器主要提供 `erase_if` 而不是按 mapped/value 的统一 erase。接口名字统一不代表复杂度或失效规则统一。
 
 对 vector，未删除元素可能被移动赋值到前面，被删点及之后的迭代器/引用通常失效；容量通常不因 erase 自动收缩。对 list，只有被删节点的迭代器/引用失效。必须按具体容器规则审计。
 
@@ -84,7 +84,7 @@ int main() {
 
 ## 其他相关便利增强
 
-C++20 还让许多标准库组件 constexpr 化，并为 map/unordered_map 等加入更一致的接口，但每项归属应单独核对。本文只聚焦高频的前后缀、contains 与统一擦除，避免把后续标准设施误列为 C++20。
+C++20 还让许多标准库组件 constexpr 化，并为 map/`unordered_map` 等加入更一致的接口，但每项归属应单独核对。本文只聚焦高频的前后缀、contains 与统一擦除，避免把后续标准设施误列为 C++20。
 
 特别注意 `string::contains` 是 C++23，不属于 C++20；C++20 的 contains 指关联容器。字符串包含子串仍使用 `find(...) != npos`，不能因容器 contains 已存在就假设字符串也有。
 
@@ -94,7 +94,7 @@ C++20 还让许多标准库组件 constexpr 化，并为 map/unordered_map 等�
 
 ### `ssize`：有符号长度
 
-`std::ssize(container)` 返回能表示容器 size 的公共有符号类型，内建数组则返回与 `ptrdiff_t` 协调的有符号长度。它适合倒序循环、与迭代器 difference_type 比较，以及必须表达 -1 哨兵的局部算法。若容器尺寸超过返回类型可表示范围，设计本身仍需限制。
+`std::ssize(container)` 返回能表示容器 size 的公共有符号类型，内建数组则返回与 `ptrdiff_t` 协调的有符号长度。它适合倒序循环、与迭代器 `difference_type` 比较，以及必须表达 -1 哨兵的局部算法。若容器尺寸超过返回类型可表示范围，设计本身仍需限制。
 
 它不会改变容器的 `size_type`，也不建议把所有尺寸字段一律改成有符号。跨 API 转换时先明确负数是否有意义；网络长度和分配大小最终仍需非负验证后转回适当无符号类型。
 
@@ -102,7 +102,7 @@ C++20 还让许多标准库组件 constexpr 化，并为 map/unordered_map 等�
 
 `std::to_array({1, 2, 3})` 能构造并推导 `std::array<int, 3>`，也可从已有内建数组复制或移动元素。它避免手写元素类型和长度，并保留字符数组中的结尾零元素，因此把字符串字面量转 array 时长度包含 `\0`。
 
-元素类型必须满足相应构造要求，多维数组和不可复制元素有精确约束。to_array 产生拥有副本，不是 span；需要观察原数组应使用 span，需要独立保存值才选择 to_array。
+元素类型必须满足相应构造要求，多维数组和不可复制元素有精确约束。`to_array` 产生拥有副本，不是 span；需要观察原数组应使用 span，需要独立保存值才选择 `to_array`。
 
 ### `midpoint` 与 `lerp`
 
@@ -132,14 +132,14 @@ C++20 还让许多标准库组件 constexpr 化，并为 map/unordered_map 等�
 ## 便利接口专项审查问题
 
 - 前后缀比较是否真是字节/字符规则而非 Unicode 规则？
-- 路径扩展名是否应使用 filesystem 而不是 ends_with？
+- 路径扩展名是否应使用 filesystem 而不是 `ends_with`？
 - contains 后是否又 find/at，造成重复查找？
 - 透明哈希与相等器是否对所有等价表示给同一哈希？
-- erase/erase_if 后保存的迭代器和引用是否失效？
+- erase/`erase_if` 后保存的迭代器和引用是否失效？
 - 谓词是否修改容器或关联键而破坏遍历不变量？
 - 删除大型 vector 的移动/析构延迟是否可接受？
 - ssize 与无符号分配大小转换前是否检查负数？
-- to_array 的字符串字面量结果是否考虑末尾零元素？
+- `to_array` 的字符串字面量结果是否考虑末尾零元素？
 - 是否误把 C++23 `string::contains` 写入 C++20 代码？
 
 ## 权威资料

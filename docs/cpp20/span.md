@@ -136,7 +136,7 @@ int main() {
 - 底层数组/容器是否覆盖 span 的完整使用期？
 - vector 重分配、插入和擦除后是否仍保存旧 span？
 - 固定 extent 是否与真实运行期长度一致并先验证？
-- `const span<T>&` 是否被误当作元素只读，而应使用 span<const T>？
+- `const span<T>&` 是否被误当作元素只读，而应使用 `span<const T>`？
 - 输入输出 span 是否可能重叠，算法是否允许别名？
 - 字节视图是否错误忽略端序、填充和对象表示有效性？
 - 空 span 是否仍调用 front/back 或解引用 data？

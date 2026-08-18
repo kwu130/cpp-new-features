@@ -38,7 +38,7 @@ array 是聚合，C++11 常见初始化写双层花括号以兼容聚合内含�
 
 ### 类型与 tuple 协议
 
-N 参与类型，因此函数接收 `array<T,N>` 可在模板中取得编译期长度。标准还提供 tuple_size、tuple_element 和 get<I>，让固定数组参与元组式泛型访问；I 越界在编译期失败。
+`N` 参与类型，因此函数接收 `array<T, N>` 可在模板中取得编译期长度。标准还提供 `std::tuple_size`、`std::tuple_element` 和 `std::get<I>`，让固定数组参与元组式泛型访问；`I` 越界会在编译期失败。
 
 数组赋值会复制/移动所有元素，内建数组则不能整体赋值。这使 array 更适合作为值类型返回和类成员，但大 N 按值传参仍可能有真实复制成本。
 
@@ -48,9 +48,9 @@ N 参与类型，因此函数接收 `array<T,N>` 可在模板中取得编译期�
 
 键类型必须满足：相等的键产生相同哈希值。修改已存储键会破坏桶不变量，因此键以 `const` 暴露。哈希随机化、桶数量和遍历顺序都不是可移植接口，不能用无序容器输出稳定序列。
 
-C++11 提供 unordered_set、unordered_multiset、unordered_map、unordered_multimap。唯一键版本插入返回 iterator+bool，多重版本允许等价键并返回相应迭代器。`operator[]` 只属于 map 类唯一键容器，会在缺失时默认构造 mapped value。
+C++11 提供 `unordered_set`、`unordered_multiset`、`unordered_map`、`unordered_multimap`。唯一键版本插入返回 `iterator` 与 `bool` 组成的二元组，多重版本允许等价键并返回相应迭代器。`operator[]` 只属于 map 类唯一键容器，会在缺失时默认构造 mapped value。
 
-哈希函数与 key_equal 必须一致：若 key_equal(a,b) 为 true，两者 hash 必须相等；反向不要求，碰撞由桶内相等比较消解。自定义大小写不敏感相等时，哈希也必须使用同样规范化。
+哈希函数与 `key_equal` 必须一致：若 `key_equal(a, b)` 为 `true`，两者的哈希值必须相等；反向不要求，碰撞由桶内相等比较消解。自定义大小写不敏感相等时，哈希也必须使用同样规范化。
 
 攻击者可控键若造成大量碰撞，平均 O(1) 会退化并形成拒绝服务。实现是否随机化不由标准保证，安全边界可使用更强哈希、限制输入或选择有序容器。
 
@@ -58,7 +58,7 @@ C++11 提供 unordered_set、unordered_multiset、unordered_map、unordered_mult
 
 `bucket(key)` 查询某键所属桶，`bucket_size(i)` 与局部迭代器可观察桶内容，主要用于诊断哈希质量。业务逻辑不应依赖桶编号，因为 rehash、实现和运行配置都会改变它。
 
-`load_factor()` 等于 size/bucket_count 的浮点比值，`max_load_factor()` 控制触发重哈希的目标阈值。降低阈值通常增加内存换更短碰撞链，不是越低越好。
+`load_factor()` 等于 `size() / bucket_count()` 的浮点比值，`max_load_factor()` 控制触发重哈希的目标阈值。降低阈值通常增加内存换更短碰撞链，不是越低越好。
 
 ## `emplace` 的构造路径
 
@@ -66,11 +66,11 @@ C++11 提供 unordered_set、unordered_multiset、unordered_map、unordered_mult
 
 直接 `push_back(value)` 对已有对象通常更清晰，移动优化后成本也可能相同。不要为了“看起来更快”而把所有插入改成 `emplace`，尤其要警惕它允许显式构造函数参与，从而接受原本会被接口阻止的隐式输入。
 
-顺序容器的 `emplace_back(args...)` 在尾部构造，`emplace(pos,args...)` 在指定位置构造并可能移动后续元素。C++11 emplace_back 返回 void（后续标准才返回引用），不能写依赖返回新元素的可移植 C++11 代码。
+顺序容器的 `emplace_back(args...)` 在尾部构造，`emplace(pos,args...)` 在指定位置构造并可能移动后续元素。C++11 的 `emplace_back` 返回 `void`（后续标准才返回引用），不能写依赖返回新元素的可移植 C++11 代码。
 
-关联容器的 value_type 往往是 `pair<const Key, Mapped>`。复杂时可用 `piecewise_construct` 加两个 tuple 分别构造 key 和 mapped，避免先形成完整 pair。语法冗长，C++17 try_emplace 对 map 场景更直接。
+关联容器的 `value_type` 往往是 `pair<const Key, Mapped>`。复杂时可用 `piecewise_construct` 加两个 tuple 分别构造 key 和 mapped，避免先形成完整 pair。语法冗长，C++17 的 `try_emplace` 对 map 场景更直接。
 
-完美转发允许 explicit 构造函数参与直接初始化，这既是能力也是接口宽化。`vector<Widget>.emplace_back(42)` 可能合法，而 `push_back(42)` 因 explicit Widget(int) 不合法；代码审查要确认调用意图。
+完美转发允许 `explicit` 构造函数参与直接初始化，这既是能力也是接口宽化。`vector<Widget>.emplace_back(42)` 可能合法，而 `push_back(42)` 因 `explicit Widget(int)` 不合法；代码审查要确认调用意图。
 
 构造新元素抛异常时，容器按各操作提供相应保证；若 vector 扩容且元素移动可能抛、又不可复制，强保证可能受限。元素的 noexcept 移动性质影响容器策略。
 
@@ -84,7 +84,7 @@ C++11 提供 unordered_set、unordered_multiset、unordered_map、unordered_mult
 
 vector 扩容通常按几何增长但因子未标准化。实时/低延迟代码应预留上限或使用固定存储，不能从某个实现的 1.5/2 倍策略推断可移植延迟。
 
-deque 分段存储，随机访问常数但不保证全体元素连续；list/forward_list 节点稳定但每节点分配与缓存局部性较差。array、vector、deque 都是不同失效/布局契约，不只是复杂度差异。
+deque 分段存储，随机访问常数但不保证全体元素连续；`list`/`forward_list` 节点稳定但每节点分配与缓存局部性较差。array、vector、deque 都是不同失效/布局契约，不只是复杂度差异。
 
 容器线程安全保证允许多个线程只读不同/同一容器，某些不同元素修改有受限规则，但结构修改通常需要外部同步。`vector<bool>` 位代理使“不同元素”也可能共享机器字，尤其不能套用普通元素直觉。
 
@@ -155,7 +155,7 @@ API 若只需要遍历，不应暴露具体容器类型；C++11 可用迭代器�
 - emplace 参数是否真避免临时而非先在调用点构造？
 - 插入冲突时构造成本和实参移动状态是否明确？
 - vector 扩容后旧元素引用是否失效？
-- max_load_factor 调整是否导致后续 rehash 峰值？
+- `max_load_factor` 调整是否导致后续 rehash 峰值？
 - 是否错误依赖 unordered 遍历顺序稳定？
 
 ## 权威资料

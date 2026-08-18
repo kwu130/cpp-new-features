@@ -60,15 +60,15 @@ sequenced-before 描述单线程求值顺序，synchronizes-with 连接特定跨
 
 `std::thread` 构造后可能立即执行。参数默认被复制或移动进内部存储，传引用要使用 `std::ref`，并保证对象活到线程结束。可连接线程析构会调用 `std::terminate`，因此所有控制路径都要 `join` 或 `detach`。`detach` 使生命周期难以管理，通常不是解决阻塞的正确办法。
 
-`joinable()` 不等于线程仍在运行：已经执行完成但尚未 join 的 thread 仍可连接。默认构造、移动来源、join/detach 后对象不可连接。对不可连接对象调用 join/detach 会抛 system_error。
+`joinable()` 不等于线程仍在运行：已经执行完成但尚未 join 的 thread 仍可连接。默认构造、移动来源、join/detach 后对象不可连接。对不可连接对象调用 join/detach 会抛 `system_error`。
 
-线程函数异常若逃出顶层会调用 terminate，不会自动传给创建者。在线程体捕获并通过 promise/exception_ptr 报告，或使用 async/future。主线程 join 只等待，不重抛 std::thread 的异常。
+线程函数异常若逃出顶层会调用 terminate，不会自动传给创建者。在线程体捕获并通过 promise/`exception_ptr` 报告，或使用 async/future。主线程 join 只等待，不重抛 std::thread 的异常。
 
 thread::id 可比较/哈希，`this_thread::get_id/yield/sleep_for/sleep_until` 提供当前线程操作。sleep 至少等待相应时长附近但受调度影响，不是实时截止保证。
 
 ### RAII join
 
-C++11 没有 jthread，项目常写 thread_guard/scoped_thread 在析构 join。守卫必须在线程引用的其他局部对象之前析构，成员声明顺序也要确保先 join 再销毁共享状态。
+C++11 没有 jthread，项目常写 `thread_guard`/`scoped_thread` 在析构 join。守卫必须在线程引用的其他局部对象之前析构，成员声明顺序也要确保先 join 再销毁共享状态。
 
 析构 join 可能无限阻塞，RAII 解决漏 join 不解决取消。任务要有停止协议/超时 I/O；C++20 jthread 才标准化协作停止入口。
 
@@ -78,9 +78,9 @@ C++11 没有 jthread，项目常写 thread_guard/scoped_thread 在析构 join。
 
 同时获取多个锁应使用 `std::lock` 等避免死锁算法，并建立全局锁顺序。持锁时调用未知回调、等待线程或执行 I/O 会扩大死锁和延迟风险。
 
-C++11 互斥类型包括 mutex、recursive_mutex、timed_mutex、recursive_timed_mutex。recursive 允许同线程重复获取，但常掩盖设计递归和过大临界区；普通 mutex 更容易推理。
+C++11 互斥类型包括 mutex、`recursive_mutex`、`timed_mutex`、`recursive_timed_mutex`。recursive 允许同线程重复获取，但常掩盖设计递归和过大临界区；普通 mutex 更容易推理。
 
-unique_lock 提供 defer_lock、try_to_lock、adopt_lock 构造、lock/try_lock/unlock、owns_lock、release 和移动。release 不解锁，只转移原始 mutex 责任；误用会永久锁住。
+`unique_lock` 提供 `defer_lock`、`try_to_lock`、`adopt_lock` 构造、lock/`try_lock`/unlock、`owns_lock`、release 和移动。release 不解锁，只转移原始 mutex 责任；误用会永久锁住。
 
 `std::lock(m1,m2,...)` 用死锁避免算法取得全部锁，随后常用 `lock_guard(m, adopt_lock)` 分别建立 RAII。若在调用前已持其中锁而协议不匹配，仍可能死锁。
 
@@ -98,19 +98,19 @@ unique_lock 提供 defer_lock、try_to_lock、adopt_lock 构造、lock/try_lock/
 
 Promise/Future 把一次性结果或异常从生产者传给消费者。`future.get()` 只能成功取一次，并会重新抛出任务异常。`async` 的默认启动策略可能选择延迟执行；需要并发时应像示例一样显式指定 `launch::async`。
 
-condition_variable 只与 `unique_lock<mutex>` 配合，condition_variable_any 可与满足 BasicLockable 的锁配合但可能成本更高。wait 会原子地释放锁并阻塞，唤醒后重新获取锁再返回。
+`condition_variable` 只与 `unique_lock<mutex>` 配合，`condition_variable_any` 可与满足 BasicLockable 的锁配合但可能成本更高。wait 会原子地释放锁并阻塞，唤醒后重新获取锁再返回。
 
-通知可在持锁时或解锁后调用；先在锁内修改谓词是关键。解锁后 notify 常减少被唤醒线程立即再次阻塞，但具体性能要测。notify_one 不保证选择哪个等待者，notify_all 可能惊群。
+通知可在持锁时或解锁后调用；先在锁内修改谓词是关键。解锁后 notify 常减少被唤醒线程立即再次阻塞，但具体性能要测。`notify_one` 不保证选择哪个等待者，`notify_all` 可能惊群。
 
 `wait_for/wait_until` 超时也要重新检查谓词；相对超时放在虚假唤醒循环中若每次重置完整 duration，可能总等待超长，谓词重载或固定绝对截止更可靠。
 
 ### shared state
 
-promise、packaged_task、async 生产共享状态，future 消费。promise 析构前未设置结果会让 future 得到 broken_promise 异常；重复 set_value/set_exception 或重复 get_future 会报 future_error。
+promise、`packaged_task`、async 生产共享状态，future 消费。promise 析构前未设置结果会让 future 得到 `broken_promise` 异常；重复 `set_value`/`set_exception` 或重复 `get_future` 会报 `future_error`。
 
-shared_future 可复制并允许多个消费者调用 get；若结果类型是引用/const 引用，仍要管理底层共享状态寿命。future::share 转移状态后原 future 无效。
+`shared_future` 可复制并允许多个消费者调用 get；若结果类型是引用/const 引用，仍要管理底层共享状态寿命。future::share 转移状态后原 future 无效。
 
-packaged_task 把可调用对象与共享状态绑定，执行 task 时保存返回值/异常，可 move 进队列；它不自行创建线程。reset 可为下一次调用建立新状态，但旧 future 仍对应旧状态。
+`packaged_task` 把可调用对象与共享状态绑定，执行 task 时保存返回值/异常，可 move 进队列；它不自行创建线程。reset 可为下一次调用建立新状态，但旧 future 仍对应旧状态。
 
 `async(launch::deferred, f)` 到 wait/get 的线程同步执行，若从未等待可能从未运行。默认 `async|deferred` 由实现选择，涉及并发假设时显式策略。
 
@@ -120,15 +120,15 @@ packaged_task 把可调用对象与共享状态绑定，执行 task 时保存返
 
 原子复合操作如 `fetch_add` 是不可分割的读改写；分别 `load`、加一、`store` 不是等价操作。原子类型是否无锁可通过接口查询，不应假设所有平台都由单条指令实现。
 
-原子类型提供 load/store/exchange/compare_exchange，整数/指针还有 fetch_add/sub 等。CAS 会把 expected 作为输入旧值；失败时把实际值写回 expected，因此常在循环中复用它。
+原子类型提供 load/store/exchange/`compare_exchange`，整数/指针还有 `fetch_add`/sub 等。CAS 会把 expected 作为输入旧值；失败时把实际值写回 expected，因此常在循环中复用它。
 
 `compare_exchange_weak` 允许虚假失败，适合循环且某些架构更高效；strong 不虚假失败，仍可能因值竞争失败。循环体必须在失败后基于更新的 expected 重新计算目标。
 
 ### 六种内存序
 
-relaxed 仅保证原子性/修改顺序；release 发布此前操作，acquire 获取发布；acq_rel 用于读改写两侧；seq_cst 再加入单一全局顺序。consume 在实践中长期实现为 acquire，复杂依赖语义不宜作为入门优化。
+relaxed 仅保证原子性/修改顺序；release 发布此前操作，acquire 获取发布；`acq_rel` 用于读改写两侧；`seq_cst` 再加入单一全局顺序。consume 在实践中长期实现为 acquire，复杂依赖语义不宜作为入门优化。
 
-store 不能使用 acquire/acq_rel，load 不能使用 release/acq_rel；CAS 成功/失败可分别指定，失败序不能包含 release 且不能强于成功序。用默认 seq_cst 正确后再由证明确认降低。
+store 不能使用 acquire/`acq_rel`，load 不能使用 release/`acq_rel`；CAS 成功/失败可分别指定，失败序不能包含 release 且不能强于成功序。用默认 `seq_cst` 正确后再由证明确认降低。
 
 release/acquire 必须通过同一原子上的值读取关系连接，两个“各自用了 release/acquire”的不同原子不自动同步。release sequence 和 CAS 链有精细规则，应用标准模式而非凭直觉拼装。
 
@@ -223,7 +223,7 @@ int main() {
 | `thread` | joinable 对象析构会 terminate，必须 join/detach |
 | `mutex` | 非递归独占锁，使用 RAII 守卫管理 |
 | `lock_guard` | 简单词法持锁，不支持提前解锁 |
-| `unique_lock` | 可延迟、移动、解锁，供 condition_variable 使用 |
+| `unique_lock` | 可延迟、移动、解锁，供 `condition_variable` 使用 |
 | `condition_variable` | 通知不保存业务状态，必须配谓词循环 |
 | `promise<T>` | 单次写入共享状态，重复满足会报错 |
 | `future<T>` | 移动专用结果句柄，get 通常只能调用一次 |
@@ -237,7 +237,7 @@ int main() {
 
 - 每个 joinable thread 是否在所有异常路径 join/detach？
 - 数据不变量是否由同一 mutex 保护全部访问？
-- condition_variable 是否总用谓词循环处理虚假唤醒？
+- `condition_variable` 是否总用谓词循环处理虚假唤醒？
 - 通知前后的锁策略是否避免丢状态与无谓竞争？
 - promise 是否恰好满足一次并传播异常？
 - future::get 是否被重复调用或越过有效状态？
@@ -255,7 +255,7 @@ int main() {
 - async 没有并发：确认是否被选择 deferred policy 及何时调用 get。
 - 结果偶发陈旧：画出 release/acquire 或 mutex 的 happens-before 链。
 - 原子计数正确但 payload 错乱：relaxed 只保护计数，不自动发布旁边数据。
-- call_once 重复进入：初始化函数抛异常时状态不会标记成功。
+- `call_once` 重复进入：初始化函数抛异常时状态不会标记成功。
 - 压测吞吐下降：检查锁粒度、伪共享、日志 I/O 与线程过量。
 - 难以复现竞态：在支持环境运行线程消毒器并保留最小压力测试。
 

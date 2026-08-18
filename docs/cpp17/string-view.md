@@ -124,7 +124,7 @@ int main() {
 | `data()` | 返回首字符指针，不保证切片末尾有零字符 |
 | `size()/length()` | O(1) 元素数，不是 Unicode 字符数 |
 | `operator[]` | 不检查边界 |
-| `at()` | 越界抛 out_of_range |
+| `at()` | 越界抛 `out_of_range` |
 | `substr(pos,n)` | O(1) 新视图，仍依赖同一所有者 |
 | `remove_prefix(n)` | O(1) 移动窗口起点，需满足前置条件 |
 | `remove_suffix(n)` | O(1) 缩短窗口，需满足前置条件 |
@@ -147,8 +147,8 @@ int main() {
 
 ## 权威资料
 
-- [N3921：string_view](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3921.html)
-- [工作草案：basic_string_view](https://eel.is/c++draft/string.view)
+- [N3921：`string_view`](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n3921.html)
+- [工作草案：`basic_string_view`](https://eel.is/c++draft/string.view)
 - [CPP17 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0636r3.html)
 
 提案用于理解设计动机和最初采用的方案；规范性行为应以对应标准版本和后续缺陷修正后的工作草案为准。

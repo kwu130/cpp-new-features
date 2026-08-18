@@ -116,13 +116,13 @@ C++17 的 `invoke` 返回类型写作 `invoke_result_t` 所描述的类型，`vo
 | 设施 | 关键语义 |
 | --- | --- |
 | `invoke(f,args...)` | 调普通函数、函数对象和 Lambda |
-| 成员函数指针 | 首个对象实参可为对象、reference_wrapper 或指针式对象 |
+| 成员函数指针 | 首个对象实参可为对象、`reference_wrapper` 或指针式对象 |
 | 成员数据指针 | 返回成员访问表达式并保留引用类别 |
 | `invoke_result_t` | 在未求值语境得到 INVOKE 结果类型 |
 | `is_invocable_v` | 检查表达式形成，不验证运行期前置条件 |
 | `is_invocable_r_v<R>` | 检查结果可转换为 R，不要求精确相同 |
 | `is_nothrow_invocable_v` | 检查调用表达式 noexcept 性质 |
-| `apply(f,tuple)` | 用 get<I> 展开固定 tuple-like 参数 |
+| `apply(f,tuple)` | 用 `get<I>` 展开固定 tuple-like 参数 |
 | 右值 tuple | 元素值类别可转发为右值 |
 | `make_from_tuple<T>` | 展开元素直接构造 T |
 
@@ -132,8 +132,8 @@ C++17 的 `invoke` 返回类型写作 `invoke_result_t` 所描述的类型，`vo
 - 传入对象、引用包装器或指针的选择是否保留 const？
 - invoke 返回引用是否被 auto 意外复制？
 - 空函数/成员指针是否可能被实际调用？
-- is_invocable 查询的值类别是否与真实 forward 一致？
-- is_invocable_r 的“可转换”是否满足精确协议？
+- `is_invocable` 查询的值类别是否与真实 forward 一致？
+- `is_invocable_r` 的“可转换”是否满足精确协议？
 - apply 右值 tuple 是否意外移动了仍需使用的元素？
 - tuple-like 的 size、element、get 是否完全一致？
 - 空 tuple 是否能自然调用零参数目标？

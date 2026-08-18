@@ -34,7 +34,7 @@ int main() {
 
 `strong_ordering` 区分 less/equal/greater，且相等对象可互相替代；`weak_ordering` 使用 equivalent，允许忽略大小写字符串这类“排序等价但观察表示不同”的情况；`partial_ordering` 还包含 unordered。更强类别能转换为较弱类别，反向通常不成立。
 
-比较类别是只允许标准命名状态的类类型，用户不能构造“数值为 7 的 strong_ordering”。这让泛型代码围绕关系语义而不是历史 `strcmp` 风格整数约定工作。需要与旧三态整数 API 对接时，应显式映射 less/equivalent/greater，并单独处理 unordered。
+比较类别是只允许标准命名状态的类类型，用户不能构造“数值为 7 的 `strong_ordering`”。这让泛型代码围绕关系语义而不是历史 `strcmp` 风格整数约定工作。需要与旧三态整数 API 对接时，应显式映射 less/equivalent/greater，并单独处理 unordered。
 
 `weak_ordering::equivalent` 与 `strong_ordering::equal` 都满足和零相等的比较，但语义承诺不同。前者允许两个等价键保留不同可观察表示；后者承诺可替代性。返回更强类别是一项对调用者的保证，不只是为了让签名更“严格”。
 

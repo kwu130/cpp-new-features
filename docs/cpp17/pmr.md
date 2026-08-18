@@ -170,7 +170,7 @@ uses-allocator 构造只对声明支持相应分配器协议的元素传播。`p
 | `memory_resource` | 字节分配/释放的运行期多态基类 |
 | `polymorphic_allocator<T>` | 保存资源指针并适配 allocator 协议 |
 | `new_delete_resource()` | 以全局 new/delete 语义作为资源 |
-| `null_memory_resource()` | 分配总是抛 bad_alloc，用于硬上限 |
+| `null_memory_resource()` | 分配总是抛 `bad_alloc`，用于硬上限 |
 | `monotonic_buffer_resource` | 单次释放不回收，release/析构批量回收 |
 | `unsynchronized_pool_resource` | 无内部线程安全的小块复用池 |
 | `synchronized_pool_resource` | 支持并发访问但增加同步成本 |
@@ -180,14 +180,14 @@ uses-allocator 构造只对声明支持相应分配器协议的元素传播。`p
 
 ## PMR 专项审查问题
 
-- memory_resource 是否比全部分配对象活得更久？
+- `memory_resource` 是否比全部分配对象活得更久？
 - 单调资源初始缓冲区耗尽后是否允许向上游扩张？
 - release 前是否已析构所有使用该资源的对象？
-- unsynchronized_pool 是否被多个线程无保护共享？
+- `unsynchronized_pool` 是否被多个线程无保护共享？
 - uses-allocator 是否传播到每层嵌套 PMR 元素？
 - 普通 std::string 是否被误认为自动使用外层资源？
 - 跨不等资源移动是否退化为逐元素搬迁？
-- 自定义 is_equal 是否真实表示可交叉释放？
+- 自定义 `is_equal` 是否真实表示可交叉释放？
 - 诊断资源记录日志时是否递归从自身分配？
 - 是否测量峰值驻留与请求分布而非只数分配次数？
 
@@ -197,12 +197,12 @@ uses-allocator 构造只对声明支持相应分配器协议的元素传播。`p
 - 仍频繁系统分配：检查初始缓冲区容量与上游请求分布。
 - 内存只增不降：monotonic 单次 deallocate 本来就不回收。
 - clear 后驻留不降：对象已析构但资源仍持有块等待 release。
-- 跨线程崩溃：unsynchronized_pool 被多个线程共享。
+- 跨线程崩溃：`unsynchronized_pool` 被多个线程共享。
 - 内层 string 仍走堆：元素可能是 std::string 而非 pmr::string。
 - 移动突然变慢：源目标资源不相等导致逐元素搬迁。
-- 错误资源释放：自定义 do_is_equal 过度报告兼容。
+- 错误资源释放：自定义 `do_is_equal` 过度报告兼容。
 - 计数资源无限递归：诊断日志/元数据又从被包装资源分配。
-- 默认资源测试互相污染：全局 set_default_resource 未在异常路径恢复。
+- 默认资源测试互相污染：全局 `set_default_resource` 未在异常路径恢复。
 
 ## 权威资料
 

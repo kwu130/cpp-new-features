@@ -36,7 +36,7 @@ int main() {
 
 `make_tuple(args...)` 推导并通常衰减元素类型，`tie(args...)` 生成左值引用 tuple，`forward_as_tuple(args...)` 保存转发引用。三者所有权和生命周期完全不同，不能因都返回 tuple 就互换。
 
-make_tuple 对 `reference_wrapper<T>` 有特殊处理，可得到 T& 元素；普通变量默认复制/移动成值。需要精确类型时可直接写 tuple<T...> 构造。forward_as_tuple 常用于立即转发构造，保存它会让临时引用悬空。
+`make_tuple` 对 `reference_wrapper<T>` 有特殊处理，可得到 T& 元素；普通变量默认复制/移动成值。需要精确类型时可直接写 `tuple<T...>` 构造。`forward_as_tuple` 常用于立即转发构造，保存它会让临时引用悬空。
 
 tuple 支持字典序关系比较，前提是元素对应比较有效；比较顺序按索引。`tuple_cat` 拼接多个 tuple-like 对象并构造新 tuple，可能复制/移动元素，值类别和引用元素要审查。
 
@@ -52,9 +52,9 @@ tuple 赋值逐元素执行，tie 正是利用引用元素把右侧多值写入�
 
 萃取只描述语言可判断的类型性质，不能替代业务语义。例如“可复制”不代表复制廉价，“算术类型”也不表示适合所有数学算法。
 
-C++11 萃取大致分为查询型（is_*）、关系型（is_same/is_base_of/is_convertible）、属性型（alignment_of/rank/extent）和变换型（remove_*/add_*/decay/common_type）。查询通常继承 integral_constant，变换通过嵌套 `type` 返回结果。
+C++11 萃取大致分为查询型（`is_*`）、关系型（`is_same`/`is_base_of`/`is_convertible`）、属性型（`alignment_of`/rank/extent）和变换型（`remove_*`/`add_*`/decay/`common_type`）。查询通常继承 `integral_constant`，变换通过嵌套 `type` 返回结果。
 
-模板推导得到 T&/const T 时，直接 `is_integral<T>` 可能为 false；是否先 remove_reference/remove_cv 取决于接口语义。机械 decay 会把数组变指针、函数变函数指针，也可能丢失需要的边界信息。
+模板推导得到 T&/const T 时，直接 `is_integral<T>` 可能为 false；是否先 `remove_reference`/`remove_cv` 取决于接口语义。机械 decay 会把数组变指针、函数变函数指针，也可能丢失需要的边界信息。
 
 `is_trivially_*`、`is_standard_layout` 等描述语言类别，可用于优化 memcpy/ABI 互操作，但必须满足每个操作的完整前置条件。trivially copyable 也不意味着对象表示跨平台稳定。
 
@@ -66,11 +66,11 @@ C++11 萃取大致分为查询型（is_*）、关系型（is_same/is_base_of/is_
 
 类型擦除要求目标可复制，这会排除只移动闭包。若调用方是模板且无需异构存储，直接接收可调用对象能保留内联机会；若需要稳定 ABI、运行期替换或同一容器存放不同回调，`std::function` 更合适。
 
-默认构造或赋 nullptr 产生空 function，显式 bool 检查是否有目标；调用空对象抛 bad_function_call。把空回调作为“无监听者”很常见，但实时/无异常代码应先检查而不是依赖抛出。
+默认构造或赋 nullptr 产生空 function，显式 bool 检查是否有目标；调用空对象抛 `bad_function_call`。把空回调作为“无监听者”很常见，但实时/无异常代码应先检查而不是依赖抛出。
 
-`target_type()` 返回存储目标的 type_info，`target<T>()` 在精确类型匹配时返回指针。它们不做基类/可转换匹配，依赖具体闭包类型进行业务分派通常破坏类型擦除目的。
+`target_type()` 返回存储目标的 `type_info`，`target<T>()` 在精确类型匹配时返回指针。它们不做基类/可转换匹配，依赖具体闭包类型进行业务分派通常破坏类型擦除目的。
 
-小对象优化阈值不标准化。函数指针/reference_wrapper 等有相应无分配保证边界，任意小闭包是否堆分配要测目标实现。std::function 自身复制会复制目标，目标抛异常时传播。
+小对象优化阈值不标准化。函数指针/`reference_wrapper` 等有相应无分配保证边界，任意小闭包是否堆分配要测目标实现。std::function 自身复制会复制目标，目标抛异常时传播。
 
 函数签名 R(Args...) 会对实参/返回值做普通转换。包装返回引用的目标时，必须确保引用寿命；void 签名可丢弃底层非 void 结果。签名没有 noexcept 维度（在 C++11），也不表达一次性调用。
 
@@ -95,13 +95,13 @@ int main() {
 }
 ```
 
-如果去掉 std::ref，bind 对象保存 value 副本，add_to 修改的是内部副本而非外围变量。`std::cref` 保存 const 引用包装，适合只读绑定。两者都不拥有对象，绑定对象必须活得足够久。
+如果去掉 std::ref，bind 对象保存 value 副本，`add_to` 修改的是内部副本而非外围变量。`std::cref` 保存 const 引用包装，适合只读绑定。两者都不拥有对象，绑定对象必须活得足够久。
 
 占位符 `_1` 等来自 std::placeholders，表示调用 bind 结果时第几个实参。重复占位符可能多次转发同一实参；若它是右值/有副作用对象，语义容易复杂。未使用的额外调用实参仍会求值后被丢弃。
 
 绑定普通值在创建 bind 对象时 decay-copy，调用时通常以左值成员传给目标；想在调用时每次移动某绑定对象很难直观表达。Lambda/命名函数对象更适合精确控制 move 和 const 重载。
 
-重载函数名传给 bind 时需要显式 cast 或函数指针变量选择签名，成员函数指针还要绑定对象/指针/reference_wrapper。`mem_fn` 可把成员指针转换为统一函数对象，通常比复杂 bind 更轻量可读。
+重载函数名传给 bind 时需要显式 cast 或函数指针变量选择签名，成员函数指针还要绑定对象/指针/`reference_wrapper`。`mem_fn` 可把成员指针转换为统一函数对象，通常比复杂 bind 更轻量可读。
 
 ## 工程检查清单
 
@@ -168,7 +168,7 @@ int main() {
 - tuple 索引是否在编译期范围内并与字段语义一致？
 - tie 返回引用是否越过被绑定对象寿命？
 - function 目标是否满足 C++11 可复制要求？
-- 空 function 是否可能被调用并抛 bad_function_call？
+- 空 function 是否可能被调用并抛 `bad_function_call`？
 - 类型擦除分配和虚调用成本是否位于热路径？
 - bind 默认按值保存参数是否符合生命周期/状态意图？
 - 需要引用时是否显式使用 ref/cref？

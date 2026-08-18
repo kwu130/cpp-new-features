@@ -37,9 +37,9 @@ int main() {
 
 概念接口包含：`using value_type = T;`、静态 `size()`，以及模板参数包本身。序列没有 operator[]、迭代器或运行期 data，因为值只存在于类型参数列表中。要在函数体取得每个值，必须通过模板包展开。
 
-`make_integer_sequence<T, N>` 只接受合适的整数类型 T 和可表示的非负 N，结果为 `integer_sequence<T, 0, 1, ..., N-1>`。`make_index_sequence<N>` 是 size_t 版本，`index_sequence_for<Ts...>` 等于按 `sizeof...(Ts)` 生成。
+`make_integer_sequence<T, N>` 只接受合适的整数类型 T 和可表示的非负 N，结果为 `integer_sequence<T, 0, 1, ..., N-1>`。`make_index_sequence<N>` 是 `size_t` 版本，`index_sequence_for<Ts...>` 等于按 `sizeof...(Ts)` 生成。
 
-序列对象作为函数参数是一种标签分派：类型携带全部信息，对象通常空。也可直接在类模板偏特化中匹配 integer_sequence，不必创建对象。
+序列对象作为函数参数是一种标签分派：类型携带全部信息，对象通常空。也可直接在类模板偏特化中匹配 `integer_sequence`，不必创建对象。
 
 ## 展开过程
 
@@ -51,11 +51,11 @@ int main() {
 
 初始化列表技巧利用元素求值顺序，并把每个有副作用表达式转换为 int 元素。`(expr, 0)` 确保无论 expr 返回什么，数组元素类型一致。前置 0 处理空包，避免零长度原生数组。
 
-C++17 用逗号折叠可简化有序副作用，但 get<I> 仍需要 I 包；integer_sequence 并没有被折叠表达式取代。C++20 模板 Lambda进一步能在局部命名索引包，底层模式依旧相同。
+C++17 用逗号折叠可简化有序副作用，但 `get<I>` 仍需要 I 包；`integer_sequence` 并没有被折叠表达式取代。C++20 模板 Lambda进一步能在局部命名索引包，底层模式依旧相同。
 
 ### 自定义顺序和选取
 
-integer_sequence 不要求值连续或排序，可以直接写 index_sequence<2,0> 选择第三、第一元素。make 系列只是常用连续生成器。
+`integer_sequence` 不要求值连续或排序，可以直接写 `index_sequence<2,0>` 选择第三、第一元素。make 系列只是常用连续生成器。
 
 ```cpp example id="cpp14-index-sequence-select" std="c++14" file="main.cpp" kind="single" compilers="all" output="third first"
 #include <cstddef>
@@ -167,7 +167,7 @@ int main() {
 
 `tuple_size<decay_t<Tuple>>` 不存在、索引越界或函数不可调用时，错误常出现在 impl 的 decltype 展开。入口可先断言 tuple-like、长度和映射范围；但 C++14 没有 Concepts，检测代码本身也要谨慎 SFINAE。
 
-自定义序列含重复索引是合法的，可能对同一元素操作多次；含降序也合法。算法若要求排列或唯一性，integer_sequence 类型不会自动证明，需额外 constexpr 检查。
+自定义序列含重复索引是合法的，可能对同一元素操作多次；含降序也合法。算法若要求排列或唯一性，`integer_sequence` 类型不会自动证明，需额外 constexpr 检查。
 
 对右值 tuple 重复选同一只移动元素会尝试移动多次。转发适配器应把“是否允许重复索引”写入契约，而不是只看类型可编译。
 
@@ -192,7 +192,7 @@ int main() {
 | `size()` | 返回值包元素数量，不检查连续性 |
 | `index_sequence<Is...>` | `integer_sequence<size_t, Is...>` 的别名 |
 | `make_integer_sequence<T,N>` | 生成 T 类型的 `[0,N)` 值包 |
-| `make_index_sequence<N>` | 生成 size_t 类型的 `[0,N)` 索引 |
+| `make_index_sequence<N>` | 生成 `size_t` 类型的 `[0,N)` 索引 |
 | `index_sequence_for<Ts...>` | 按类型包长度生成索引，不读取类型内容 |
 | 空输入 | 形成 `index_sequence<>`，展开表达式必须能处理零项 |
 | 手写重复值 | 合法，但会重复实例化/访问对应位置 |
@@ -200,7 +200,7 @@ int main() {
 
 `make_integer_sequence<T, N>` 生成从 0 到 N-1 的序列；N 为零得到空包，N 必须是合适的非负常量。`make_index_sequence<N>` 固定使用 `size_t`，`index_sequence_for<Ts...>` 只取类型包长度而不检查各类型内容。
 
-`integer_sequence::size()` 返回包中值的数量，不保证等于最后一个值加一。用户可直接构造重复、逆序或稀疏序列，只有 make_* 工厂承诺标准递增形状。
+`integer_sequence::size()` 返回包中值的数量，不保证等于最后一个值加一。用户可直接构造重复、逆序或稀疏序列，只有 `make_*` 工厂承诺标准递增形状。
 
 线性递归实现会为每个索引产生中间特化并可能触及模板深度；分治实现把递归深度降为对数级，编译器还可能为标准别名提供内建。运行时代码同为零不代表编译成本相同。
 
@@ -213,11 +213,11 @@ int main() {
 - 手写索引是否可能超出目标 tuple 长度？
 - 重复索引是否会二次移动同一元素？
 - 展开副作用是否错误依赖函数实参顺序？
-- 自定义序列的 value_type 是否适合目标索引 API？
+- 自定义序列的 `value_type` 是否适合目标索引 API？
 - 多个同步展开参数包长度是否一致？
 - 线性递归实现是否触发模板深度限制？
 - 大型同质数据是否本应使用运行期循环？
-- 错误是否可通过更近的 static_assert 提前诊断？
+- 错误是否可通过更近的 `static_assert` 提前诊断？
 
 ## 权威资料
 

@@ -37,7 +37,7 @@ int main() {
 
 推导类似 `auto variable = expression`：数组和函数通常发生退化，顶层 const 被移除，引用不保留。返回 `const Widget` 表达式通常推导为 `Widget` 值，这符合按值返回的常见语义，却不适合透明代理。
 
-带花括号的初始化列表不能单独为 auto 返回类型提供普通推导目标；`return {1, 2};` 不会自动决定 vector 或 initializer_list。应显式写返回类型或返回一个已命名构造表达式。
+带花括号的初始化列表不能单独为 auto 返回类型提供普通推导目标；`return {1, 2};` 不会自动决定 vector 或 `initializer_list`。应显式写返回类型或返回一个已命名构造表达式。
 
 虚函数不能只靠推导返回类型定义覆盖契约，因为调用点/基类接口需要稳定签名。协变返回等多态规则仍要求显式类型设计。构造函数和析构函数本来也没有返回类型。
 
@@ -169,7 +169,7 @@ int main() {
 
 `return std::move(local);` 配合 decltype(auto) 会产生指向局部对象的右值引用并立即悬空。要移动出局部对象，应按值返回，让移动或复制消除建立独立结果对象。
 
-成员访问还有 decltype 特例：`decltype(object.member)` 取成员声明类型，`decltype((object.member))` 按表达式类别常得到引用。透明访问器应以 static_assert 固定预期返回类型。
+成员访问还有 decltype 特例：`decltype(object.member)` 取成员声明类型，`decltype((object.member))` 按表达式类别常得到引用。透明访问器应以 `static_assert` 固定预期返回类型。
 
 ## 返回推导专项审查
 
@@ -179,7 +179,7 @@ int main() {
 - 多分支返回是否推导完全相同类型？
 - 递归调用前是否已有可确定返回类型？
 - 仅声明未知 auto 返回是否被跨源文件调用？
-- 代理对象是否应该物化为稳定 value_type？
+- 代理对象是否应该物化为稳定 `value_type`？
 - 是否用 std::move(local) 产生悬空 T&&？
 - SFINAE 是否应该放在尾置返回声明而非函数体？
 - 公共 ABI 是否更适合显式返回类型？

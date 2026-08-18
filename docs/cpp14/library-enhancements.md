@@ -33,17 +33,17 @@ int main() {
 
 共享锁只允许逻辑只读操作。如果所谓“读”会更新缓存、统计或延迟初始化状态，它仍可能需要独占锁或独立原子同步。返回受保护对象的引用后立即释放锁，也会把数据竞争推给调用者。
 
-同一线程不能默认对 shared_timed_mutex 递归加锁，无论共享还是独占组合。标准没有递归共享互斥量；再次请求可能死锁或违反前置条件。把锁所有权集中在外层，内部 helper 接收“已持锁”状态而不重复获取。
+同一线程不能默认对 `shared_timed_mutex` 递归加锁，无论共享还是独占组合。标准没有递归共享互斥量；再次请求可能死锁或违反前置条件。把锁所有权集中在外层，内部 helper 接收“已持锁”状态而不重复获取。
 
-共享所有权允许不同线程各持一个 shared_lock，但任何独占请求必须等所有读者释放。反过来独占持有期间读者和其他写者都不能进入。互斥量对象本身必须比所有锁包装器活得久。
+共享所有权允许不同线程各持一个 `shared_lock`，但任何独占请求必须等所有读者释放。反过来独占持有期间读者和其他写者都不能进入。互斥量对象本身必须比所有锁包装器活得久。
 
 ### `shared_lock` 所有权接口
 
-shared_lock 类似 unique_lock 的共享模式 RAII 包装：支持默认/延迟/尝试/定时/采用锁构造、移动所有权、`owns_lock()`、`operator bool`、`lock/try_lock/unlock`、`release` 和 `swap`。它不可复制。
+`shared_lock` 类似 `unique_lock` 的共享模式 RAII 包装：支持默认/延迟/尝试/定时/采用锁构造、移动所有权、`owns_lock()`、`operator bool`、`lock/try_lock/unlock`、`release` 和 `swap`。它不可复制。
 
-`release()` 只放弃包装器与 mutex 的关联，不调用 unlock_shared；调用者必须接管解锁责任。它不是普通提前解锁。需要提前释放通常直接 `unlock()`，保留对象但状态变为不拥有。
+`release()` 只放弃包装器与 mutex 的关联，不调用 `unlock_shared`；调用者必须接管解锁责任。它不是普通提前解锁。需要提前释放通常直接 `unlock()`，保留对象但状态变为不拥有。
 
-adopt_lock 要求当前线程已以共享模式持锁，否则前置条件被破坏。defer_lock 只关联不获取，适合稍后协调；try_to_lock 立即尝试并可通过 owns_lock 检查。
+`adopt_lock` 要求当前线程已以共享模式持锁，否则前置条件被破坏。`defer_lock` 只关联不获取，适合稍后协调；`try_to_lock` 立即尝试并可通过 `owns_lock` 检查。
 
 ### 锁接口与 RAII 包装
 
@@ -55,7 +55,7 @@ adopt_lock 要求当前线程已以共享模式持锁，否则前置条件被破
 
 `try_lock_for(duration)` 使用相对等待，`try_lock_until(time_point)` 使用绝对截止时间；共享版本在名称中带 `_shared`。允许虚假失败的具体接口语义要按标准读取，即便未到超时也不应把失败解释为锁永久不可用。
 
-steady_clock 截止更适合相对业务超时，system_clock 可能因系统校时跳变。实现可将时钟转换到内部等待原语，实际返回会受调度延迟影响，超时是“不早于/尽力”边界而非实时保证。
+`steady_clock` 截止更适合相对业务超时，`system_clock` 可能因系统校时跳变。实现可将时钟转换到内部等待原语，实际返回会受调度延迟影响，超时是“不早于/尽力”边界而非实时保证。
 
 超时后绝不能访问受保护数据。常见 API 返回 optional 快照、错误码或 bool，让调用者决定重试/降级。把超时当作获得了“弱一致读”会直接造成数据竞争。
 
@@ -77,7 +77,7 @@ steady_clock 截止更适合相对业务超时，system_clock 可能因系统校
 
 它要求 T 可移动构造、T& 可由 U 赋值。对只能复制的旧类型，move 表达式仍可能落到复制构造；性能取决于 T。noexcept 性质由构造和赋值是否抛出决定，标准函数不会强行承诺不抛。
 
-`exchange(x, x)` 或让 new_value 引用 object/其子对象时会出现别名与求值语义，先保存旧值后再赋值仍可能从已移动 object 读取。避免自别名，或先在外部构造独立新值。
+`exchange(x, x)` 或让 `new_value` 引用 object/其子对象时会出现别名与求值语义，先保存旧值后再赋值仍可能从已移动 object 读取。避免自别名，或先在外部构造独立新值。
 
 ```cpp example id="cpp14-exchange-move-state" std="c++14" file="main.cpp" kind="single" compilers="all" output="moved=7, source=-1"
 #include <iostream>
@@ -128,7 +128,7 @@ int main() {
 
 ## 透明比较器与异构查找
 
-C++14 标准关联容器支持在比较器透明时用不同于 key_type 的查询类型执行 find/lower_bound 等操作。`std::less<>`（即 `less<void>`）会转发实际参数类型，并声明透明能力，避免为查询临时构造完整键。
+C++14 标准关联容器支持在比较器透明时用不同于 `key_type` 的查询类型执行 find/`lower_bound` 等操作。`std::less<>`（即 `less<void>`）会转发实际参数类型，并声明透明能力，避免为查询临时构造完整键。
 
 ```cpp example id="cpp14-heterogeneous-lookup" std="c++14" file="main.cpp" kind="single" compilers="all" output="answer=42"
 #include <iostream>
@@ -180,7 +180,7 @@ C++14 `get<T>(tuple)` 可按类型取得 tuple 元素，但要求该类型在 tu
 | 透明 `less<>` | 可让有序容器异构比较，避免部分临时键 |
 | `quoted` | 流式定界/转义代理，不是完整数据格式解析器 |
 
-`shared_timed_mutex` 的独占定时接口为 `try_lock_for/until`，共享接口为 `try_lock_shared_for/until`。相对超时接收 duration，绝对截止接收 time_point；调度延迟可能使函数晚于截止返回，它不是硬实时保证。
+`shared_timed_mutex` 的独占定时接口为 `try_lock_for/until`，共享接口为 `try_lock_shared_for/until`。相对超时接收 duration，绝对截止接收 `time_point`；调度延迟可能使函数晚于截止返回，它不是硬实时保证。
 
 `shared_lock` 只有在底层互斥量支持对应协议时才能使用定时成员。`defer_lock` 建立关联但不获取，`adopt_lock` 则要求调用方已经以共享模式持锁；标签不会动态验证前置条件。
 
@@ -192,10 +192,10 @@ C++14 的 `_t` 类型别名只缩短 `typename trait<T>::type` 写法，不改�
 
 ## C++14 库增强专项审查
 
-- 读写比例是否真能让 shared_timed_mutex 获益？
+- 读写比例是否真能让 `shared_timed_mutex` 获益？
 - 定时锁晚于截止返回是否能被业务接受？
-- shared_lock 的底层 mutex 是否支持所用定时接口？
-- adopt_lock 前是否已经以共享模式拥有锁？
+- `shared_lock` 的底层 mutex 是否支持所用定时接口？
+- `adopt_lock` 前是否已经以共享模式拥有锁？
 - 是否错误假定读写锁公平？
 - exchange 的赋值异常是否会留下可接受状态？
 - exchange 是否被误当作原子同步操作？

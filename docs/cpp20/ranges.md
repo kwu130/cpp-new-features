@@ -34,7 +34,7 @@ Ranges 算法通常返回带信息的结果类型或安全迭代器，并使用�
 
 哨兵只需要能与迭代器比较是否到达终点，不一定能解引用或递增。`sentinel_for<S, I>` 描述基本结束关系，`sized_sentinel_for` 还允许用相减得到距离。这种分离使无限序列配合 `take`、零终止字符范围和不同状态终点更自然。
 
-### 迭代器 Concept 与旧 iterator_category
+### 迭代器 Concept 与旧 `iterator_category`
 
 C++20 迭代器 Concept 以表达式能力和语义要求为中心，不再只依赖继承某个标签。`input_iterator` 支持单遍读取，`forward_iterator` 增加多遍保证，`bidirectional_iterator` 支持递减，`random_access_iterator` 支持常数时间跳转，`contiguous_iterator` 还保证地址连续。算法应要求它真正需要的最低层级。
 
@@ -174,7 +174,7 @@ Range-for 与管道天然配合，因为语言会分别获取 begin/end。算法
 ## Ranges 专项审查问题
 
 - 管道底层范围由谁拥有，何时销毁或重分配？
-- View 是否只满足 input_range，却被代码重复遍历？
+- View 是否只满足 `input_range`，却被代码重复遍历？
 - filter/transform 中的函数对象是否含副作用或短寿命引用捕获？
 - 算法实际需要的 iterator/range Concept 是否被准确约束？
 - 返回迭代器面对临时非 borrowed range 时是否变成 dangling？
@@ -187,15 +187,15 @@ Range-for 与管道天然配合，因为语言会分别获取 begin/end。算法
 ## Ranges 故障定位线索
 
 - 编译器报告 not range：先分别验证 ranges::begin 和 ranges::end。
-- 报 sentinel_for 失败：检查 end 类型能否与 iterator 双向比较。
-- sort 不可用：核对 random_access、sortable、投影和关系四层约束。
-- 旧算法拒绝 View：检查 iterator/end 是否异型并考虑 common_view。
+- 报 `sentinel_for` 失败：检查 end 类型能否与 iterator 双向比较。
+- sort 不可用：核对 `random_access`、sortable、投影和关系四层约束。
+- 旧算法拒绝 View：检查 iterator/end 是否异型并考虑 `common_view`。
 - 结果为 dangling：算法接收了临时非 borrowed range。
-- 第二次遍历为空：当前管道可能只满足单遍 input_range。
+- 第二次遍历为空：当前管道可能只满足单遍 `input_range`。
 - const 管道无法 begin：谓词 const-callable 或适配器缓存契约不满足。
 - 元素修改未落到底层：transform 可能按值返回而非引用。
 - 运行变慢：检查 filter 重复扫描、transform 重算和大型闭包捕获。
-- 偶发悬空：从最外 View 逐层追踪到最终 owning/ref_view 与所有者。
+- 偶发悬空：从最外 View 逐层追踪到最终 owning/`ref_view` 与所有者。
 
 ## 权威资料
 

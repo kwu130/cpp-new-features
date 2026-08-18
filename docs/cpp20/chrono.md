@@ -49,9 +49,9 @@ int main() {
 
 ### 连续日表示
 
-`sys_days` 是 `sys_time<days>`，以 system_clock epoch 为基准的连续日时间点；`local_days` 则属于 local_t 时间轴，没有绑定具体 UTC 偏移。日期排序和相差天数通常先转 sys_days，前提是日期有效。
+`sys_days` 是 `sys_time<days>`，以 `system_clock` epoch 为基准的连续日时间点；`local_days` 则属于 `local_t` 时间轴，没有绑定具体 UTC 偏移。日期排序和相差天数通常先转 `sys_days`，前提是日期有效。
 
-weekday 可从 sys_days/日期构造，支持 `Monday[2]` 之类“某月第几个星期几”以及 `Monday[last]` 组合。排班规则仍要处理节假日和地区日历，标准库只提供公历与星期结构。
+weekday 可从 `sys_days`/日期构造，支持 `Monday[2]` 之类“某月第几个星期几”以及 `Monday[last]` 组合。排班规则仍要处理节假日和地区日历，标准库只提供公历与星期结构。
 
 ### weekday 与索引日历
 
@@ -65,9 +65,9 @@ indexed 值也可能暂时无效，最终组合应调用 `ok()`。例如某月�
 
 “一个月后”和“30 天后”不是同一业务概念。日历类型加 `months` 会保留年月日字段并可能产生无效月末；`sys_days` 加 `days` 则按连续日线推进。账单、订阅和排班必须先定义月末策略，再选择操作。
 
-对 `2024-01-31` 加一个 month 可能得到字段为 `2024-02-31` 的无效 year_month_day；库不会擅自决定夹到 29 日还是滚入三月。业务可检测 `ok()` 后选择 `year/month/last` 夹月末，或转换连续日按固定天数推进。
+对 `2024-01-31` 加一个 month 可能得到字段为 `2024-02-31` 的无效 `year_month_day`；库不会擅自决定夹到 29 日还是滚入三月。业务可检测 `ok()` 后选择 `year/month/last` 夹月末，或转换连续日按固定天数推进。
 
-year_month 加 months 会规范化年月，例如十二月加两个月进入下一年。year 加 years 可能让闰日组合失效，同样需要策略。日历算术保留人类字段语义，而 duration 算术保留连续时间长度。
+`year_month` 加 months 会规范化年月，例如十二月加两个月进入下一年。year 加 years 可能让闰日组合失效，同样需要策略。日历算术保留人类字段语义，而 duration 算术保留连续时间长度。
 
 日期 duration `days` 是固定 24 小时数量，但本地民用一天跨夏令时可能是 23 或 25 小时。计算“明天同一当地时间”与“经过 24 小时”必须选不同时间轴。
 
@@ -77,25 +77,25 @@ year_month 加 months 会规范化年月，例如十二月加两个月进入下�
 
 数据库规则会随法律变化。部署环境必须更新 tzdb，并考虑历史数据重放时使用当前规则还是保存当时版本。不是所有 C++20 标准库发行版都完整打包时区数据库，CI 通过编译也不代表生产数据可用。
 
-`get_tzdb()`/`get_tzdb_list()` 访问当前数据库，`locate_zone(name)` 按 IANA 风格名称取得 time_zone，`current_zone()` 查询系统当前区域。指针/引用有效性与 tzdb list 生命周期和 reload 行为相关，长期服务应封装更新策略。
+`get_tzdb()`/`get_tzdb_list()` 访问当前数据库，`locate_zone(name)` 按 IANA 风格名称取得 `time_zone`，`current_zone()` 查询系统当前区域。指针/引用有效性与 tzdb list 生命周期和 reload 行为相关，长期服务应封装更新策略。
 
-`time_zone::to_local(sys_time)` 的方向通常唯一：绝对时间点在某区域有一个当地表示。`to_sys(local_time)` 可能遇到 nonexistent_local_time 或 ambiguous_local_time；可以指定 `choose::earliest/latest`，但选择必须来自业务需求。
+`time_zone::to_local(sys_time)` 的方向通常唯一：绝对时间点在某区域有一个当地表示。`to_sys(local_time)` 可能遇到 `nonexistent_local_time` 或 `ambiguous_local_time`；可以指定 `choose::earliest/latest`，但选择必须来自业务需求。
 
 `sys_info` 描述某绝对区间的 UTC offset、save 和 abbreviation；`local_info` 描述本地时间映射的 unique/nonexistent/ambiguous 结果。审计复杂调度时应保留这种结构化状态，而不是只捕获异常文本。
 
 ### 不存在与重复的当地时间
 
-春季跳时会形成一段从未出现的 local_time，默认严格转换可能抛 `nonexistent_local_time`；秋季回拨会让同一钟面时间对应两个 sys_time，可能抛 `ambiguous_local_time`。这两类不是解析格式错误，而是时区映射本身一对零/一对多。
+春季跳时会形成一段从未出现的 `local_time`，默认严格转换可能抛 `nonexistent_local_time`；秋季回拨会让同一钟面时间对应两个 `sys_time`，可能抛 `ambiguous_local_time`。这两类不是解析格式错误，而是时区映射本身一对零/一对多。
 
 `choose::earliest` / `latest` 对重复时间选择较早或较晚瞬间，并为规定转换提供处理策略，但它不是所有业务的正确默认。金融成交应记录原绝对时间，日程系统可能询问用户，批处理可能选择偏移连续性；策略必须写进领域层。
 
-仅保存当地时间与缩写如 CST 仍无法消除歧义，因为缩写在不同地区复用且历史偏移会变化。可靠事件至少保存 sys_time；若要恢复用户语义，再附加 IANA 区域名和必要的规则版本信息。
+仅保存当地时间与缩写如 CST 仍无法消除歧义，因为缩写在不同地区复用且历史偏移会变化。可靠事件至少保存 `sys_time`；若要恢复用户语义，再附加 IANA 区域名和必要的规则版本信息。
 
 ### 闰秒与 UTC 时钟
 
-C++20 chrono 还增加 `utc_clock`、`tai_clock`、`gps_clock`、`file_clock` 及转换设施。system_clock 通常建模 Unix 风格系统时间，闰秒处理与 UTC 时间轴不同。跨时钟转换要使用 `clock_cast`/规定转换关系并确认工具链支持。
+C++20 chrono 还增加 `utc_clock`、`tai_clock`、`gps_clock`、`file_clock` 及转换设施。`system_clock` 通常建模 Unix 风格系统时间，闰秒处理与 UTC 时间轴不同。跨时钟转换要使用 `clock_cast`/规定转换关系并确认工具链支持。
 
-`get_leap_second_info` 等设施依赖时区数据库中的闰秒信息。大多数业务时间戳仍选择 sys_time 加时区标识，但科学/通信领域必须明确时间尺度，不能把所有 epoch 整数都叫 UTC。
+`get_leap_second_info` 等设施依赖时区数据库中的闰秒信息。大多数业务时间戳仍选择 `sys_time` 加时区标识，但科学/通信领域必须明确时间尺度，不能把所有 epoch 整数都叫 UTC。
 
 `sys_time` 与 `utc_time` 代表不同时间尺度，跨闰秒附近的转换并非简单永恒固定偏移。`tai_clock` 没有 UTC 式插入闰秒，`gps_clock` 又有自己的 epoch/关系。协议文档应明确时钟、epoch 和闰秒策略三个维度。
 
@@ -109,9 +109,9 @@ C++20 chrono 还增加 `utc_clock`、`tai_clock`、`gps_clock`、`file_clock` �
 
 只保存 UTC 时间点能恢复瞬间，但不能永远恢复用户原定的“每月当地上午 9 点”规则；重复日程还需保存时区名称和民用字段。只保存当前 offset 也不足以预测未来 DST/法律变化。
 
-序列化应记录单位和 epoch，例如明确为 Unix 毫秒，而不是直接写 `time_since_epoch().count()`；后者的 period/表示类型由 time_point 类型决定。解析时检查范围，避免纳秒时间转换到窄整数溢出。
+序列化应记录单位和 epoch，例如明确为 Unix 毫秒，而不是直接写 `time_since_epoch().count()`；后者的 period/表示类型由 `time_point` 类型决定。解析时检查范围，避免纳秒时间转换到窄整数溢出。
 
-格式化与解析 chrono 类型的标准支持和 tzdb 一样受库版本影响。协议核心可先用整数 sys_time，用户界面层再做区域格式化，并对不可用时区提供可观测降级。
+格式化与解析 chrono 类型的标准支持和 tzdb 一样受库版本影响。协议核心可先用整数 `sys_time`，用户界面层再做区域格式化，并对不可用时区提供可观测降级。
 
 ## 示例解析与测试
 
@@ -134,15 +134,15 @@ C++20 chrono 还增加 `utc_clock`、`tai_clock`、`gps_clock`、`file_clock` �
 
 ## Chrono 专项审查问题
 
-- 输入 year_month_day 是否在转换前调用 ok()？
+- 输入 `year_month_day` 是否在转换前调用 ok()？
 - “一个月后”与“经过固定天数”是否按业务区分？
 - 月末、闰日失效后采用夹取、滚动还是报错策略？
 - 保存的是绝对瞬间、当地字段、区域名还是三者组合？
 - DST 不存在/重复当地时间是否显式选择策略？
 - 时区数据库缺失、过旧或 reload 是否有可观测处理？
 - duration 序列化是否记录单位与 epoch？
-- 测耗时是否使用 steady_clock 而非可跳变 system_clock？
-- UTC、TAI、GPS 与 Unix 风格 sys_time 是否被准确区分？
+- 测耗时是否使用 `steady_clock` 而非可跳变 `system_clock`？
+- UTC、TAI、GPS 与 Unix 风格 `sys_time` 是否被准确区分？
 - 目标标准库是否真实支持所用 tzdb/format 功能？
 
 ## 权威资料

@@ -131,7 +131,7 @@ inline 变量仍有零初始化、常量初始化和动态初始化。constexpr 
 | 类内 `inline static` | 可在类定义中同时声明和定义 |
 | `inline constexpr static` | 同时具常量与内联实体语义 |
 | 变量模板 | 可用 inline 管理跨翻译单元特化实体 |
-| thread_local inline | 每线程一个实体，各翻译单元定义合并 |
+| `thread_local` inline | 每线程一个实体，各翻译单元定义合并 |
 | 动态初始化 | inline 不保证跨不同实体的简单全局次序 |
 | 显式特化 | inline 属性需按特化声明自身规则处理 |
 | ABI | 仍受类型、布局、可见性和共享库规则约束 |
@@ -144,7 +144,7 @@ inline 变量仍有零初始化、常量初始化和动态初始化。constexpr 
 - 多个 inline 动态初始化实体之间是否存在顺序依赖？
 - 类内 static 成员是否真的需要独立可变全局状态？
 - 模板特化是否继承/重新声明了正确 inline 属性？
-- thread_local inline 的每线程身份是否符合设计？
+- `thread_local` inline 的每线程身份是否符合设计？
 - 共享库可见性与 ABI 是否另行配置？
 - 变量地址是否被用作稳定跨进程/跨版本标识？
 - 测试是否包含多个翻译单元以验证唯一实体？

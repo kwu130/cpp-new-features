@@ -61,7 +61,7 @@ int main() {
 
 `atomic_ref<T>` 为一个已经存在的 T 对象提供原子操作，适合共享内存布局、外部结构或逐步迁移旧数据。所有指向同一对象的并发访问必须兼容地原子化，混用普通读写仍会数据竞争。
 
-底层对象地址必须满足 `required_alignment`，生命周期必须覆盖所有 atomic_ref。对象本身不能是 const，且 T 必须满足规定的可平凡复制等要求。是否无锁可查询，未对齐不能靠实现“凑合”。
+底层对象地址必须满足 `required_alignment`，生命周期必须覆盖所有 `atomic_ref`。对象本身不能是 const，且 T 必须满足规定的可平凡复制等要求。是否无锁可查询，未对齐不能靠实现“凑合”。
 
 ```cpp example id="cpp20-atomic-ref-counter" std="c++20" file="main.cpp" kind="single" compilers="all" output="counter=2000"
 #include <atomic>
@@ -88,29 +88,29 @@ int main() {
 }
 ```
 
-底层 `int` 显式满足 required_alignment，两个线程的所有并发访问都经 atomic_ref。这里只需要计数原子性，join 已负责最终可见性，所以 relaxed 足够；若计数值还发布其他数据，就需更强的同步设计。
+底层 `int` 显式满足 `required_alignment`，两个线程的所有并发访问都经 `atomic_ref`。这里只需要计数原子性，join 已负责最终可见性，所以 relaxed 足够；若计数值还发布其他数据，就需更强的同步设计。
 
-同一对象上可以存在多个 atomic_ref，它们引用同一原子修改顺序。关键不是“必须共用同一个 atomic_ref 对象”，而是所有重叠生命周期中的访问都遵循原子协议。普通初始化应在并发开始前完成，普通最终读取应在所有原子引用/并发操作结束后并有线程同步。
+同一对象上可以存在多个 `atomic_ref`，它们引用同一原子修改顺序。关键不是“必须共用同一个 `atomic_ref` 对象”，而是所有重叠生命周期中的访问都遵循原子协议。普通初始化应在并发开始前完成，普通最终读取应在所有原子引用/并发操作结束后并有线程同步。
 
 `is_always_lock_free` 是静态性质，`is_lock_free()` 可查询当前对象/实现。不是 lock-free 仍具有原子语义，只是实现可能使用锁。共享内存跨进程使用还需平台保证，C++ 类型本身不承诺内部锁跨进程工作。
 
 ### 对象表示与别名
 
-atomic_ref 不能引用位域，因为位域没有可取得的独立地址。对数组元素、结构成员使用时要确保该对象没有与其他并发访问单元重叠；相邻位打包或联合存储尤其危险。
+`atomic_ref` 不能引用位域，因为位域没有可取得的独立地址。对数组元素、结构成员使用时要确保该对象没有与其他并发访问单元重叠；相邻位打包或联合存储尤其危险。
 
-对象必须是 trivially copyable 类型，但这不代表任意业务操作都能原子完成。atomic_ref 只提供 `atomic<T>` 对该 T 支持的操作；整数有 fetch_add/位操作，普通结构通常只有 load/store/exchange/CAS。
+对象必须是 trivially copyable 类型，但这不代表任意业务操作都能原子完成。`atomic_ref` 只提供 `atomic<T>` 对该 T 支持的操作；整数有 `fetch_add`/位操作，普通结构通常只有 load/store/exchange/CAS。
 
-若两个 atomic_ref 指向的对象存储发生重叠，而并发操作并非同一个完整对象，就不能据“每次调用都是原子的”推断组合安全。联合成员、打包结构和手工切片缓冲区尤其需要证明原子访问单元不重叠。
+若两个 `atomic_ref` 指向的对象存储发生重叠，而并发操作并非同一个完整对象，就不能据“每次调用都是原子的”推断组合安全。联合成员、打包结构和手工切片缓冲区尤其需要证明原子访问单元不重叠。
 
-`required_alignment` 可能严格于 `alignof(T)`，因此普通 T 对象并不天然适合作 atomic_ref 目标。把类型放入容器后，每个元素仍需满足地址要求；只给容器对象本身加一个不足以传递的对齐声明可能无法保证所有布局。
+`required_alignment` 可能严格于 `alignof(T)`，因此普通 T 对象并不天然适合作 `atomic_ref` 目标。把类型放入容器后，每个元素仍需满足地址要求；只给容器对象本身加一个不足以传递的对齐声明可能无法保证所有布局。
 
-atomic_ref 的构造与复制不取得底层所有权，也不会登记生命周期。所有引用销毁后，且线程同步确保没有并发原子访问时，底层对象才可恢复普通访问。仅让局部 atomic_ref 变量离开一个线程作用域不能证明其他线程副本已停止。
+`atomic_ref` 的构造与复制不取得底层所有权，也不会登记生命周期。所有引用销毁后，且线程同步确保没有并发原子访问时，底层对象才可恢复普通访问。仅让局部 `atomic_ref` 变量离开一个线程作用域不能证明其他线程副本已停止。
 
 ## 内存序
 
 等待和加载同样接受内存序。典型发布模式是生产者 release store 新状态并 notify，消费者 acquire wait/load 后读取相关数据。示例使用默认顺序以保持直观；降低到 relaxed 前必须证明没有其他数据需要发布。
 
-`wait(old, order)` 的 order 约束与加载类似，不能使用 release 或 acq_rel。返回前观察到不同值的加载若以 acquire 执行，可与生产者 release store 同步。notify 不代替这对内存序。
+`wait(old, order)` 的 order 约束与加载类似，不能使用 release 或 `acq_rel`。返回前观察到不同值的加载若以 acquire 执行，可与生产者 release store 同步。notify 不代替这对内存序。
 
 使用 relaxed 等待可以高效观察纯计数/状态，却不发布旁边普通对象。常见错误是生产者先写非原子 payload，再 relaxed store ready 并 notify，消费者看到 ready 后读 payload；这缺少 release/acquire 关系。
 
@@ -128,7 +128,7 @@ atomic_ref 的构造与复制不取得底层所有权，也不会登记生命周
 
 ## 示例解析与实践
 
-工作线程通过 atomic_ref 写 counter，再发布 state=1；主线程等待 state 改变后原子增加 counter。工程中用版本计数防 ABA，记录对齐与访问协议，避免为大量短暂对象随意创建 atomic_ref，并在目标平台检查锁自由性质与等待延迟。
+工作线程通过 `atomic_ref` 写 counter，再发布 state=1；主线程等待 state 改变后原子增加 counter。工程中用版本计数防 ABA，记录对齐与访问协议，避免为大量短暂对象随意创建 `atomic_ref`，并在目标平台检查锁自由性质与等待延迟。
 
 ## 原子接口速查
 
@@ -137,12 +137,12 @@ atomic_ref 的构造与复制不取得底层所有权，也不会登记生命周
 | `wait(old)` | 值表示仍等于 old 时阻塞，返回前重新检查 |
 | `notify_one` | 唤醒至少一个当前等待者，不累计事件 |
 | `notify_all` | 唤醒全部当前等待者，可能产生惊群 |
-| wait 内存序 | 类似加载，不允许 release/acq_rel |
+| wait 内存序 | 类似加载，不允许 release/`acq_rel` |
 | release store + acquire wait | 可发布旁边普通数据 |
 | ABA | 值变走又变回 old 可能无法观察中间事件 |
 | `atomic_ref<T>` | 非拥有地为既有 T 提供原子访问 |
 | `required_alignment` | 目标地址必须满足，可能大于 alignof(T) |
-| 混合普通访问 | 并发期间与 atomic_ref 混用会数据竞争 |
+| 混合普通访问 | 并发期间与 `atomic_ref` 混用会数据竞争 |
 | `is_lock_free` | 非 lock-free 仍具原子语义，可能内部加锁 |
 
 ## 原子等待专项审查问题
@@ -151,16 +151,16 @@ atomic_ref 的构造与复制不取得底层所有权，也不会登记生命周
 - 消费者是否在 wait 返回后重新检查完整业务状态？
 - 纯布尔状态是否会因 ABA 丢失中间事件？
 - payload 发布是否有匹配的 release/acquire 链？
-- wait 是否错误使用 release 或 acq_rel 内存序？
-- notify_one 的任意唤醒是否适合当前消费者模型？
-- atomic_ref 目标是否满足 required_alignment？
+- wait 是否错误使用 release 或 `acq_rel` 内存序？
+- `notify_one` 的任意唤醒是否适合当前消费者模型？
+- `atomic_ref` 目标是否满足 `required_alignment`？
 - 同一底层对象并发访问是否全部采用原子协议？
-- atomic_ref 生命周期结束前是否可能销毁目标对象？
+- `atomic_ref` 生命周期结束前是否可能销毁目标对象？
 - lock-free 与跨进程可用性是否在目标平台实际验证？
 
 ## 权威资料
 
-- [P0019R8：atomic_ref](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0019r8.html)
+- [P0019R8：`atomic_ref`](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0019r8.html)
 - [P1135R6：原子等待与通知](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1135r6.html)
 - [工作草案：Atomic waiting operations](https://eel.is/c++draft/atomics.wait)
 - [CPP20 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2131r0.html)

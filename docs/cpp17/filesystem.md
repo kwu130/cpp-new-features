@@ -124,26 +124,26 @@ int main() {
 
 - 当前操作是纯词法还是实际访问文件系统？
 - 安全检查是否错误用字符串前缀代替 canonical/句柄策略？
-- status 与 symlink_status 的跟随意图是否明确？
+- status 与 `symlink_status` 的跟随意图是否明确？
 - 检查后操作是否存在 TOCTOU 竞态？
 - 递归遍历是否处理链接环、权限错误和未指定顺序？
-- error_code 是否在每次调用后立即检查？
-- remove_all 目标是否解析为精确、非根、可信路径？
+- `error_code` 是否在每次调用后立即检查？
+- `remove_all` 目标是否解析为精确、非根、可信路径？
 - `.string()` 是否被误认为跨平台 UTF-8？
-- current_path 修改是否会影响进程其他线程？
+- `current_path` 修改是否会影响进程其他线程？
 - rename/刷盘是否被误当作跨平台完整事务？
 
 ## Filesystem 故障定位线索
 
 - 路径看似相同却访问不同对象：检查相对基准、链接与大小写规则。
-- canonical 抛错：某个组件不存在或无权限，考虑 weakly_canonical 是否符合语义。
+- canonical 抛错：某个组件不存在或无权限，考虑 `weakly_canonical` 是否符合语义。
 - 遍历结果顺序漂移：目录迭代顺序本就未指定，需要显式排序。
-- 递归跑出根目录：检查 follow_directory_symlink 及信任边界。
+- 递归跑出根目录：检查 `follow_directory_symlink` 及信任边界。
 - exists 后 open 仍失败：这是正常 TOCTOU，直接处理 open 结果。
 - Windows/POSIX 文本乱码：不要假设 path::string 永远 UTF-8。
-- file_time 无法转 system_clock：C++17 不保证两者同一时钟。
+- `file_time` 无法转 `system_clock`：C++17 不保证两者同一时钟。
 - rename 跨设备失败：标准接口不保证跨文件系统移动事务。
-- error_code 仍保留旧错觉：每次调用后紧邻解释 ec 与返回值。
+- `error_code` 仍保留旧错觉：每次调用后紧邻解释 ec 与返回值。
 - 删除范围过大：日志并二次确认规范化精确目标，禁止根/空路径。
 
 ## 权威资料
