@@ -1,6 +1,28 @@
 # `latch`、`barrier` 与 `semaphore`
 
-`latch` 是一次性倒计数门闩，`barrier` 支持重复阶段同步，`semaphore` 管理有限数量的许可。
+## 学习目标与条件变量样板
+
+C++17 中，一次性汇合、重复阶段同步或资源许可通常用互斥量、条件变量、计数器和谓词自行组合。正确实现需要同时处理丢失通知、虚假唤醒、计数更新和内存可见性，代码很容易把三种不同状态机混在一起。
+
+C++20 提供 `latch`、`barrier` 和 `counting_semaphore`：分别表达一次性倒计数、可重复阶段汇合和可消费许可。选择正确原语能让状态约束进入接口，但参与数和对象生命周期仍由程序负责。
+
+读完后，你应能为启动门、阶段算法和资源池选择原语，解释每项操作的同步关系，并识别计数不足、参与者退出、完成函数和公平性风险。
+
+## 最小接口
+
+```text
+std::latch done(task_count);              // 计数到零后永久开放
+std::barrier phase(participant_count);    // 每个阶段自动重置
+std::counting_semaphore<capacity> permits(initial_count);
+
+done.count_down();  done.wait();
+phase.arrive_and_wait();
+permits.acquire();  permits.release();
+```
+
+## 第一个完整示例
+
+二元信号量控制工作线程开始，barrier 让两个线程在结果写入后汇合，latch 再表达工作线程已经完成收尾。
 
 ```cpp example id="cpp20-synchronization" std="c++20" file="main.cpp" kind="single" compilers="all" output="42"
 #include <barrier>
@@ -30,7 +52,7 @@ int main() {
 }
 ```
 
-必须保证 barrier 的参与者数量与实际到达一致，否则程序会永久等待。信号量保护的是许可数量，不自动保护许可对应对象的其他共享状态。
+程序输出 `42`。阶段同步使主线程在读取结果前越过工作线程的写入阶段，latch 随后确认工作完成。必须保证 barrier 的参与者数量与实际到达一致；信号量只管理许可数量。
 
 ## 三种原语的状态机
 

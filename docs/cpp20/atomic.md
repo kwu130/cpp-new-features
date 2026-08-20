@@ -1,6 +1,27 @@
 # 原子等待与 `atomic_ref`
 
-原子对象可以直接等待值变化并通知等待者，避免围绕简单状态额外建立条件变量。`atomic_ref` 则为现有对象提供原子访问视图。
+## 学习目标与简单状态等待问题
+
+C++17 若要让线程等待一个原子状态变化，通常只能忙等、自行退避，或再建立互斥量与条件变量；后者的通知必须与另一份谓词状态正确配合。已有对象若后来需要原子访问，也无法直接改变公开布局为 `atomic<T>`。
+
+C++20 为原子对象加入 `wait`、`notify_one`、`notify_all`，并提供 `atomic_ref<T>` 以原子方式观察满足条件的现有对象。等待解决休眠效率，`atomic_ref` 解决访问形式；二者都不会替调用方设计正确状态机和内存序。
+
+读完后，你应能围绕旧值循环等待，理解通知不保存事件，满足 `atomic_ref` 的对齐、生命周期与一致访问要求，并选择 acquire/release 或更弱内存序。
+
+## 最小接口
+
+```text
+state.wait(old_value);      // 返回前确认值表示已不等于 old_value
+state.store(new_value, std::memory_order_release);
+state.notify_one();
+
+std::atomic_ref<int> view(existing_aligned_int);
+view.fetch_add(1, std::memory_order_relaxed);
+```
+
+## 第一个完整示例
+
+工作线程先通过 `atomic_ref` 写计数器，再发布状态并通知；主线程等待发布完成后，通过另一 `atomic_ref` 原子递增相同对象。
 
 ```cpp example id="cpp20-atomic" std="c++20" file="main.cpp" kind="single" compilers="all" output="43"
 #include <atomic>
@@ -25,7 +46,7 @@ int main() {
 }
 ```
 
-`atomic_ref` 的底层对象必须满足对齐要求，且在引用存活期间所有并发访问都应通过原子方式。等待仍应围绕期望值编写，通知本身不保存事件。
+程序输出 `43`。状态的默认顺序使主线程观察到工作线程此前写入，随后原子加一。`atomic_ref` 的底层对象必须满足对齐要求，且在相关并发访问期间不能混用普通非原子访问；通知本身不保存事件。
 
 ## 原子等待的语义
 

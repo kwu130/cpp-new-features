@@ -1,6 +1,27 @@
 # 位运算工具与数学常量
 
-`<bit>` 提供旋转、位计数、二进制上取整等可读且可移植的操作；`<numbers>` 提供按浮点类型定义的数学常量。
+## 学习目标与手写位技巧
+
+C++17 项目常用编译器内建或手写表达式实现置位计数、旋转、二次幂取整和对象表示复制。边界值、类型位宽与有符号运算会让经典“位技巧”产生未定义行为；圆周率等常量又常由项目各自截断定义。
+
+C++20 `<bit>` 提供可移植、通常可常量求值的位工具、`bit_cast` 与字节序信息；`<numbers>` 提供按浮点类型定义的数学常量。接口明确了可接受类型和零值等边界，但不会替调用方验证溢出前置条件。
+
+读完后，你应能选择位计数、旋转和二次幂函数，安全使用 `bit_cast` 与 `endian`，并按计算类型选择数学常量模板。
+
+## 最小接口
+
+```text
+std::popcount(value);
+std::rotl(value, distance);
+std::has_single_bit(value);
+std::bit_floor(value);  std::bit_ceil(value);  std::bit_width(value);
+std::bit_cast<Destination>(source);
+std::numbers::pi_v<double>;
+```
+
+## 第一个完整示例
+
+示例统计掩码中的置位数，把容量向上取到二次幂，并只验证圆周率落在稳定区间，避免依赖默认输出精度。
 
 ```cpp example id="cpp20-bit-numbers" std="c++20" file="main.cpp" kind="single" compilers="all" output="ones=4, capacity=16, pi-valid=true"
 #include <bit>
@@ -18,7 +39,7 @@ int main() {
 }
 ```
 
-大多数位工具要求无符号整数。`bit_ceil` 的结果若无法由返回类型表示会触发未定义行为，调用前应限制输入范围。
+程序输出 `ones=4, capacity=16, pi-valid=true`。大多数位工具要求无符号整数；`bit_ceil` 的结果若无法由返回类型表示会触发未定义行为，调用前应限制输入范围。
 
 ## `<bit>` 提供的能力
 

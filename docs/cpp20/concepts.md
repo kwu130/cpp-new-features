@@ -1,6 +1,29 @@
 # Concepts 与约束
 
-Concepts 为模板参数声明可读、可组合的约束，让重载选择更明确，也能把模板错误定位到接口边界。
+## 学习目标与 C++17 模板约束问题
+
+C++17 泛型代码通常用 `enable_if`、检测惯用法和 `if constexpr` 限制模板。它们能判断表达式是否合法，却常把条件藏进返回类型或额外模板参数；多个候选的强弱关系也需要手工编码，错误信息容易深入函数体。
+
+C++20 Concepts 把约束提升为模板接口的一部分。命名 Concept 可以组合类型性质与 requires-expression，约束参与候选可行性和偏序，却不会产生运行期检查。
+
+读完后，你应能定义与复用 Concept，区分四种约束写法，读懂 requires-expression 的四类要求，并理解约束规范化、原子约束身份和语义要求的边界。
+
+## 最小语法
+
+```text
+template <typename T>
+concept Addable = requires(T left, T right) {
+    { left + right } -> std::same_as<T>;
+};
+
+template <Addable T> T combine(T, T);          // 受约束模板参数
+template <typename T> requires Addable<T> T combine(T, T);
+Addable auto normalize(Addable auto value);   // 缩写函数模板
+```
+
+## 第一个完整示例
+
+示例的 `Arithmetic` 组合两个标准 Concept，`add` 再附加整数宽度约束。约束在重载解析时检查，函数体不需要运行期类型分支。
 
 ```cpp example id="cpp20-concepts" std="c++20" file="main.cpp" kind="single" compilers="all" output="42"
 #include <concepts>
@@ -26,7 +49,7 @@ int main() {
 }
 ```
 
-Concept 应描述调用者真正依赖的语义能力，而不是只罗列碰巧使用的具体类型。优先复用标准 Concept，并把复杂约束拆成有业务含义的命名 Concept。
+程序输出 `42`。`twice(10)` 满足算术约束并得到 `20`，随后 `int` 同时满足 `integral` 和尺寸条件。Concept 应描述调用者真正依赖的语义能力，而不是只罗列碰巧使用的具体类型。
 
 ## 从 SFINAE 到约束系统
 

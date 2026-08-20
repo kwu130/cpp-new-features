@@ -1,6 +1,27 @@
 # `jthread`、停止令牌与协作取消
 
-`jthread` 析构时自动请求停止并连接线程。若可调用对象首参数接受 `stop_token`，它就能响应协作式取消。
+## 学习目标与线程析构问题
+
+C++11 `std::thread` 在仍可连接时析构会调用 `terminate`，因此每条正常与异常路径都必须显式 `join` 或 `detach`。即使正确连接，标准线程也没有统一的取消状态，项目常用各自原子标志和唤醒协议。
+
+C++20 `std::jthread` 把自动连接纳入 RAII，并与 `stop_source`、`stop_token`、`stop_callback` 共享协作停止模型。停止请求只是线程安全信号，不会强制终止线程或自动中断任意阻塞调用。
+
+读完后，你应能安排 jthread 的析构与被引用对象寿命，设计安全停止点和可取消等待，理解回调并发语义，并避免持锁等待、成员析构顺序和分离线程陷阱。
+
+## 最小接口
+
+```text
+std::jthread worker([](std::stop_token token) {
+    while (!token.stop_requested()) { /* 完成一个可中断工作单元 */ }
+});
+
+worker.request_stop(); // 幂等请求
+worker.join();         // 等待结束；析构时也会按规则请求并连接
+```
+
+## 第一个完整示例
+
+线程入口首参数接受令牌，因此 jthread 自动注入自己的停止状态。主线程显式连接后才读取普通整数 `result`。
 
 ```cpp example id="cpp20-jthread" std="c++20" file="main.cpp" kind="single" compilers="all" output="42"
 #include <iostream>
@@ -19,7 +40,7 @@ int main() {
 }
 ```
 
-停止请求不会强行终止线程，任务必须在合适位置查询令牌或注册回调。自动 `join` 改善异常安全，但持锁析构 `jthread` 仍可能造成死锁。
+程序输出 `42`。工作线程观察到尚未请求停止并写入结果，`join` 建立线程完成与后续读取之间的同步。自动连接改善异常安全，但持锁析构 jthread 仍可能造成死锁。
 
 ## RAII 线程所有权
 

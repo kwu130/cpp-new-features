@@ -1,6 +1,26 @@
 # Coroutines
 
-协程允许函数挂起并稍后恢复，是生成器、异步任务和流式处理的底层语言机制。标准提供协程协议，但不直接提供通用任务类型。
+## 学习目标与回调状态机问题
+
+C++17 中，生成序列或异步等待通常通过迭代器对象、回调链、Future 或手写状态机表达。跨越暂停点的局部状态必须搬进对象，控制流被拆散，错误、取消和所有权也容易隐藏在框架约定中。
+
+C++20 协程让函数使用 `co_await`、`co_yield` 或 `co_return` 挂起并稍后恢复。编译器把函数改写为协程帧和状态机；标准只定义语言协议与句柄，不提供现成的 `task` 或 `generator`，返回类型必须负责 Promise、调度和帧生命周期。
+
+读完后，你应能识别协程函数，跟踪创建、初始挂起、恢复、最终挂起与销毁，理解 awaiter 三步协议，并避免双重恢复、悬空引用和错误销毁帧。
+
+## 最小语法与角色
+
+```text
+co_await awaitable;   // 等待并可能挂起
+co_yield value;       // 产生值，转换为 promise.yield_value(value)
+co_return result;     // 完成，转换为 promise.return_value/return_void
+
+return_object ──拥有/引用──> coroutine_handle ──指向──> coroutine frame
+```
+
+## 第一个完整示例
+
+下面的 `Generator` 是教学用最小拥有类型：Promise 保存当前值，句柄负责恢复，析构函数负责销毁帧。生产代码还需更完整的迭代器、异常和误用保护。
 
 ```cpp example id="cpp20-coroutines" std="c++20" file="main.cpp" kind="single" compilers="all" output="1 2 3"
 #include <coroutine>
@@ -57,7 +77,7 @@ int main() {
 }
 ```
 
-协程帧和句柄所有权必须清晰；遗失 `destroy` 会泄漏，过早销毁会留下悬空句柄。生产代码通常应使用经过验证的任务/生成器库，而不是反复手写协议类型。
+程序输出 `1 2 3`。每次 `next()` 恢复到下一个 `co_yield`，Promise 先保存值再挂起；循环结束后句柄处于完成状态，最终由 Generator 析构。协程帧和句柄所有权必须清晰：遗失 `destroy` 会泄漏，过早销毁会留下悬空句柄。
 
 ## 编译器如何改写协程
 

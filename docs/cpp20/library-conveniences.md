@@ -1,6 +1,27 @@
 # 字符串和容器常用增强
 
-字符串加入 `starts_with`、`ends_with`，关联容器加入 `contains`，并提供统一的 `erase`/`erase_if`，让常见意图更直接。
+## 学习目标与常见惯用法标准化
+
+C++17 中，前后缀判断常写成长度计算加 `compare`/`find`，键存在性写成 `find != end`，顺序容器删除条件元素则重复 erase-remove 惯用法。这些代码并不困难，但容易在无符号边界、容器接口差异和意图表达上出错。
+
+C++20 把这些高频操作标准化为 `starts_with`、`ends_with`、`contains`、非成员 `erase`/`erase_if`，并加入 `ssize`、`to_array`、`midpoint`、`lerp` 等小型工具。便利接口减少样板，不改变底层复杂度、迭代器失效或文本语义。
+
+读完后，你应能根据“只查存在”或“还要访问元素”选择接口，理解删除返回值与失效规则，并避免把字符前后缀判断误当作路径或 Unicode 语义。
+
+## 最小接口
+
+```text
+text.starts_with(prefix);
+text.ends_with(suffix);
+map.contains(key);
+
+auto removed = std::erase(sequence, value);
+auto removed_if = std::erase_if(container, predicate);
+```
+
+## 第一个完整示例
+
+示例删除所有偶数，再组合文件名字符检查与映射键存在性。三项查询都只表达当前容器或字符序列的直接状态。
 
 ```cpp example id="cpp20-library-conveniences" std="c++20" file="main.cpp" kind="single" compilers="all" output="valid=true, remaining=2"
 #include <iostream>
@@ -22,7 +43,7 @@ int main() {
 }
 ```
 
-`contains` 只回答键是否存在，不返回元素；随后还要访问值时，单次 `find` 更合适。前后缀检查按字符序列比较，不处理路径规范化或大小写规则。
+程序输出 `valid=true, remaining=2`。`erase_if` 返回值未使用，但向量中只剩两个奇数。`contains` 不返回元素，随后还要访问值时单次 `find` 更合适；前后缀检查也不处理路径规范化或大小写规则。
 
 ## `starts_with` 与 `ends_with`
 

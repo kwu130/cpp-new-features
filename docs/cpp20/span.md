@@ -1,6 +1,25 @@
 # `span`
 
-`span` 是连续内存的非拥有视图，可以统一接收数组、`array`、`vector` 或指针加长度，同时保留元素类型和边界信息。
+## 学习目标与指针加长度接口
+
+C++17 函数处理连续元素时，常分别提供数组引用、容器模板和 `T* + size` 重载。裸指针不携带长度，两个参数可能不匹配；直接接收 `vector&` 又把算法耦合到具体所有者。`string_view` 只解决字符序列，不能泛化到任意元素。
+
+C++20 `std::span` 是连续内存的非拥有视图，可统一观察内建数组、`array`、`vector` 或指针与长度。元素类型表达可修改性，第二模板参数可把固定元素数量加入类型契约。
+
+读完后，你应能选择动态或静态长度、可写或只读 span，创建安全子视图和字节视图，并判断底层销毁、重新分配及别名造成的失效和性能边界。
+
+## 最小接口
+
+```text
+std::span<const int> values = container; // 动态长度只读视图
+std::span<int, 4> block = array;         // 长度进入类型
+auto tail = values.subspan(offset, count);
+auto bytes = std::as_bytes(values);
+```
+
+## 第一个完整示例
+
+`sum` 按值接收只读动态长度 span。调用方传入 `array` 时，构造过程只保存观察信息，不复制四个整数。
 
 ```cpp example id="cpp20-span" std="c++20" file="main.cpp" kind="single" compilers="all" output="10"
 #include <array>
@@ -21,7 +40,7 @@ int main() {
 }
 ```
 
-`span` 不拥有内存，底层数据销毁或容器重新分配后视图会失效。只读参数使用 `span<const T>`；固定长度接口可以使用 `span<T, N>` 在类型中表达大小。
+程序输出 `10`。范围 `for` 通过 span 访问原数组元素。`span` 不拥有内存，底层数据销毁或容器重新分配后视图会失效；只读参数使用 `span<const T>`，固定长度接口可使用 `span<T, N>`。
 
 ## 表示与静态长度
 

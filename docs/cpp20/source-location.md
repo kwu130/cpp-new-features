@@ -1,6 +1,28 @@
 # `source_location`
 
-`source_location` 以标准方式捕获调用点的文件、行号和函数名，适合日志、断言和诊断接口。
+## 学习目标与诊断宏问题
+
+C++17 日志和断言通常用 `__FILE__`、`__LINE__`、`__func__` 等宏捕获位置。宏能取得调用点，却缺乏统一值类型，包装层容易重新捕获错误位置，函数名和列号的可用形式也因实现而异。
+
+C++20 `std::source_location` 把文件、函数、行和列包装成可复制对象。把 `current()` 放在函数默认实参中，可以在不要求调用者写宏的情况下捕获调用表达式位置。
+
+读完后，你应能设计保留调用点的日志接口，在多层包装中转发位置，并处理路径泄露、可复现构建、实现差异和错误对象位置保存。
+
+## 最小接口
+
+```text
+void log(std::string_view message,
+         std::source_location where = std::source_location::current());
+
+where.file_name();
+where.function_name();
+where.line();
+where.column();
+```
+
+## 第一个完整示例
+
+默认实参在 `main` 的调用表达式处求值；示例只断言行号为正，避免依赖会随编辑变化的精确行号。
 
 ```cpp example id="cpp20-source-location" std="c++20" file="main.cpp" kind="single" compilers="all" output="message=ready, line-positive=true"
 #include <iostream>
@@ -18,7 +40,7 @@ int main() {
 }
 ```
 
-默认参数必须在接口处调用 `current()` 才能取得调用者位置；若在函数体内调用，记录到的将是日志函数自身位置。文件路径可能包含构建环境信息，公开日志前应考虑脱敏。
+程序输出 `message=ready, line-positive=true`。默认参数必须在接口处调用 `current()` 才能取得调用者位置；若在函数体内调用，记录到的是日志函数自身位置。文件路径可能包含构建环境信息，公开日志前应考虑脱敏。
 
 ## 捕获时机
 

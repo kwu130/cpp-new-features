@@ -1,6 +1,28 @@
 # Ranges 与 Views
 
-Ranges 算法直接接受范围；Views 则以惰性、非拥有方式组合过滤和转换，管道语法让数据流更清晰。
+## 学习目标与迭代器对接口的问题
+
+C++17 算法通常要求调用方重复传入 `begin`/`end`，结束位置必须与迭代器采用紧密配套的模型，按成员排序还要手写 Lambda。多步过滤和变换若建立中间容器，会增加分配与复制；不建立容器又常需编写专用迭代器适配器。
+
+C++20 Ranges 用 Concepts 描述范围、迭代器与哨兵能力，算法可直接接收整个范围并支持投影。Views 是通常惰性、轻量的范围适配器，可以用管道组合而不立即生成结果容器。
+
+读完后，你应能区分 Range、View、容器和 borrowed range，判断源对象生命周期与迭代器失效，理解惰性求值成本，并选择传统算法或 Ranges 算法。
+
+## 最小语法
+
+```text
+std::ranges::sort(values);                       // 直接接收范围
+std::ranges::sort(records, {}, &Record::name);   // 投影成员
+
+auto pipeline = values
+    | std::views::filter(predicate)
+    | std::views::transform(operation)
+    | std::views::take(10);
+```
+
+## 第一个完整示例
+
+示例建立一个观察 `values` 的惰性管道。过滤与平方操作直到范围被 `for` 遍历时才对相应元素执行。
 
 ```cpp example id="cpp20-ranges" std="c++20" file="main.cpp" kind="single" compilers="all" output="4 16"
 #include <iostream>
@@ -22,7 +44,7 @@ int main() {
 }
 ```
 
-View 通常不拥有底层数据，必须保证源范围生命周期足够长。惰性求值意味着转换可能在每次迭代时重复执行；需要稳定结果或多次遍历时应考虑物化到容器。
+程序输出 `4 16`。奇数在过滤阶段被跳过，变换只对留下的 `2` 和 `4` 求平方。View 通常不拥有底层数据，必须保证源范围生命周期足够长；需要稳定结果或多次遍历时应考虑物化到容器。
 
 ## Range、迭代器和哨兵
 

@@ -1,6 +1,24 @@
 # `consteval`、`constinit` 与扩展 `constexpr`
 
-`consteval` 函数必须在编译期求值；`constinit` 保证静态或线程存储期对象进行静态初始化，但不会让对象自动变成常量。C++20 继续扩大 `constexpr` 可执行操作范围。
+## 学习目标与三个相似关键字
+
+C++17 的 `constexpr` 函数既可在常量求值中执行，也可退回运行期；它无法表达“这个 API 的每次调用必须在编译期完成”。静态对象即使希望保持可变，也缺少直接声明“初始化必须属于静态初始化、不能产生初始化顺序风险”的方式。
+
+C++20 加入 `consteval` 和 `constinit`，并继续放宽 `constexpr`。三者分别约束调用时机、初始化阶段和常量求值资格，不能互相替换。
+
+读完后，你应能为编译期解析器选择 `consteval`，为可变全局状态选择性使用 `constinit`，判断 `constexpr` 函数何时仍生成运行时代码，并理解瞬时分配等 C++20 边界。
+
+## 最小语法
+
+```text
+consteval int compile_only(int value);       // 每个立即调用必须常量求值
+constexpr int compile_or_runtime(int value); // 可用于两种求值环境
+constinit int mutable_global = expression;   // 必须静态初始化，仍可修改
+```
+
+## 第一个完整示例
+
+`twice` 强制编译期执行，`sum` 同时适用于编译期和运行期，`runtime_counter` 静态初始化后仍是普通可变整数。
 
 ```cpp example id="cpp20-compile-time" std="c++20" file="main.cpp" kind="single" compilers="all" output="42"
 #include <array>
@@ -27,7 +45,7 @@ int main() {
 }
 ```
 
-`constinit` 与 `constexpr` 解决不同问题：前者约束初始化时机，后者约束对象可变性与常量表达式资格。只在调用本质上必须编译期完成时使用 `consteval`。
+程序输出 `42`。计数器从编译期得到的 `40` 开始，在运行期递增；`offset` 是常量表达式 `2`。`constinit` 不增加 `const`，只在调用本质上必须编译期完成时使用 `consteval`。
 
 ## 三个关键字的职责
 
@@ -45,7 +63,7 @@ int main() {
 
 立即函数调用若处在另一个立即函数体，或处在立即函数参数作用域等标准规定的即时函数上下文中，可以暂时依赖尚未成为具体常量的形参；最终离开该上下文、形成普通潜在求值调用时仍必须完成常量求值。这个规则让 consteval 函数可以互相组合，而不是要求每一层形参在定义处已有值。
 
-立即函数本身隐含 `constexpr` 语义并且也隐含 inline 相关属性，不应再把它理解成一个必须提供单独运行期定义的普通函数。它不能是构造函数或析构函数，也不能同时声明为 `consteval` 与 `constexpr`。
+立即函数本身隐含 `constexpr` 语义并且也隐含 inline 相关属性，不应再把它理解成一个必须提供单独运行期定义的普通函数。构造函数可以声明为 `consteval`；析构函数、分配函数和释放函数不能使用该说明符，函数也不能同时声明为 `consteval` 与 `constexpr`。
 
 取立即函数地址可以作为即时计算中的中间步骤，例如传给另一个立即算法；但指向立即函数的指针不能作为常量表达式结果逃逸到运行期。该限制保证程序不会在普通执行路径调用一个只定义编译期语义的入口。
 
