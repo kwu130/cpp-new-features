@@ -1,6 +1,26 @@
 # `scoped_lock` 与 `shared_mutex`
 
-`scoped_lock` 可以一次安全锁定多个互斥量，降低锁顺序不一致造成死锁的风险。`shared_mutex` 提供共享读与独占写。
+## 学习目标与 C++14 并发接口的缺口
+
+C++11 已提供互斥量与 RAII 锁，C++14 又加入 `shared_timed_mutex`。但一次管理多把锁仍常写成 `std::lock` 加多个采用锁标签，步骤容易遗漏；不需要定时接口的读写锁也缺少更直接的类型。
+
+C++17 的 `scoped_lock` 用一个 RAII 对象管理零把、一把或多把互斥量，多锁构造采用死锁避免算法；`shared_mutex` 则提供不带定时操作的共享读、独占写互斥量。二者解决不同问题，可以组合但互不替代。
+
+读完后，你应能安全取得多把锁，选择 `unique_lock` 或 `shared_lock` 管理读写所有权，并从竞争、饥饿、缓存一致性和临界区长度评估性能。
+
+## 最小接口
+
+```text
+std::scoped_lock lock(first_mutex, second_mutex); // 离开作用域自动全部释放
+
+std::shared_mutex mutex;
+std::shared_lock read_owner(mutex);               // C++17 可使用 CTAD
+std::unique_lock write_owner(mutex);
+```
+
+## 第一个完整示例
+
+第一个作用域同时锁住两把普通互斥量并更新关联状态；离开作用域后，再以共享所有权取得读写互斥量并输出结果。
 
 ```cpp example id="cpp17-concurrency" std="c++17" file="main.cpp" kind="single" compilers="all" output="left=1, right=2"
 #include <iostream>
@@ -24,7 +44,7 @@ int main() {
 }
 ```
 
-共享锁并不一定比普通互斥量快；只有读多写少且临界区足够大时才可能受益。持锁期间应避免调用未知代码或执行缓慢 I/O。
+程序输出 `left=1, right=2`。输出发生在普通互斥量已经释放之后；示例中的共享锁只用于演示所有权形式。共享锁并不一定比普通互斥量快，只有读多写少且临界区足够大时才可能受益。
 
 ## `scoped_lock` 的死锁避免
 

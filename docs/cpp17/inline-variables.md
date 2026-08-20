@@ -1,6 +1,29 @@
 # 内联变量与嵌套命名空间
 
-内联变量允许在头文件中定义同一个变量而不违反单一定义规则。嵌套命名空间语法则缩短了多层命名空间声明。
+## 学习目标与头文件定义问题
+
+在 C++14 及更早版本中，头文件直接定义具有外部链接的变量会让多个翻译单元各自产生定义，违反单一定义规则；常见做法是头文件写 `extern`，再由一个源文件提供唯一实体。变量模板、类静态成员和头文件常量因此容易出现额外定义、地址不一致或链接错误。
+
+C++17 内联变量把内联函数已有的多翻译单元定义模型扩展到变量：相同定义可以出现在多个翻译单元中，但整个程序仍指向同一实体。同期加入的 `namespace project::config` 只是嵌套命名空间的简写，不改变链接规则。
+
+读完后，你应能判断何时使用 `inline`、`inline constexpr` 或传统 `extern`，理解 ODR 对“相同定义”的要求，并避免把内联变量误认为线程局部变量或同步设施。
+
+## 最小语法
+
+```text
+inline int process_wide_counter = 0;
+inline constexpr int buffer_size = 4096;
+
+struct Settings {
+    inline static std::string name = "default";
+};
+
+namespace company::component { /* 等价于两层命名空间 */ }
+```
+
+## 第一个完整示例
+
+示例把配置常量和可变状态都放进嵌套命名空间。两者可以在头文件中定义，但只有名称是不可变编译期值，计数器仍需由调用方负责同步。
 
 ```cpp example id="cpp17-inline-variables" std="c++17" file="main.cpp" kind="single" compilers="all" output="cpp-features:1"
 #include <iostream>
@@ -18,7 +41,7 @@ int main() {
 }
 ```
 
-`inline` 解决的是跨翻译单元定义问题，并不提供线程安全。可在编译期确定的配置值优先写成 `inline constexpr`。
+程序输出 `cpp-features:1`。`name` 是可常量求值的观察值，`active_readers` 则是整个程序共享的普通整数。`inline` 解决的是跨翻译单元定义问题，并不提供线程安全；可在编译期确定的配置值优先写成 `inline constexpr`。
 
 ## 从内联函数到内联变量
 

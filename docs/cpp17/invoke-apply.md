@@ -1,6 +1,24 @@
 # `apply` 与 `invoke`
 
-`apply` 把元组展开为函数实参，`invoke` 以统一语法调用普通函数、函数对象和成员指针。
+## 学习目标与泛型调用样板
+
+C++14 中，泛型适配器要统一处理普通函数、函数对象和成员指针，必须按可调用对象类别选择不同语法；把一个 `tuple` 的元素变成位置实参，还需手写 `index_sequence` 展开。业务代码因此容易重复标准调用规则。
+
+C++17 的 `std::invoke` 统一可调用协议，`std::apply` 则把 tuple-like 对象展开后执行一次调用。它们主要服务泛型基础设施；签名固定且直接可调用的普通代码仍应保持简单。
+
+读完后，你应能调用成员函数和成员数据指针，理解 `apply` 的索引展开模型，并用 `is_invocable`、`invoke_result` 与条件 `noexcept` 描述适配器能力。
+
+## 最小接口
+
+```text
+std::invoke(callable, arguments...);
+std::invoke(member_pointer, object, arguments...);
+std::apply(callable, tuple_like_arguments);
+```
+
+## 第一个完整示例
+
+外层 `apply` 把元组中的 `6` 和 `7` 传给 Lambda，内层 `invoke` 再按成员函数指针规则调用 `Calculator::multiply`。
 
 ```cpp example id="cpp17-invoke-apply" std="c++17" file="main.cpp" kind="single" compilers="all" output="42"
 #include <functional>
@@ -23,7 +41,7 @@ int main() {
 }
 ```
 
-这些工具适合泛型适配层。普通直接调用仍然更清晰，不必为了统一形式而无条件使用 `invoke`。
+程序输出 `42`。`apply` 没有在运行期循环读取元组，而是在编译期按索引形成两个位置实参；`invoke` 也不做类型擦除。普通直接调用仍然更清晰，不必为了统一形式而无条件使用这些工具。
 
 ## `invoke` 统一了哪些调用
 

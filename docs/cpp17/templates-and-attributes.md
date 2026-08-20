@@ -1,6 +1,32 @@
 # 模板参数与属性
 
-C++17 允许 `auto` 非类型模板参数，并标准化了 `[[nodiscard]]`、`[[maybe_unused]]` 和 `[[fallthrough]]` 等常用属性。
+## 学习目标与本篇范围
+
+C++14 的非类型模板参数必须先写明值类型，例如 `template<int Value>`；同一模板若希望接受不同整数或枚举类型，需要额外模板层。另一方面，编译器长期用各自扩展表达“返回值不应忽略”“变量可能未使用”和“这里有意贯穿 case”，可移植诊断能力有限。
+
+C++17 允许用 `auto` 推导非类型模板参数的类型，并加入 `[[nodiscard]]`、`[[maybe_unused]]`、`[[fallthrough]]` 三项常用标准属性。本篇把它们放在一起讲，是因为它们都增强声明的表达力，但二者机制不同：模板值影响实例身份，属性主要向实现和读者传达意图。
+
+读完后，你应能判断模板值的实际类型与实例数量，正确放置三项属性，并理解警告、程序正确性和 ABI 之间的边界。
+
+## 最小语法
+
+```text
+template <auto Value>
+struct constant { /* decltype(Value) 是推导后的类型 */ };
+
+[[nodiscard]] Result open_resource();
+[[maybe_unused]] const auto trace = build_trace();
+
+case first:
+    prepare();
+    [[fallthrough]];
+case second:
+    execute();
+```
+
+## 第一个完整示例
+
+示例用 `twice<21>` 展示自动推导的值参数，并在一个 `switch` 中演示三项属性各自的出现位置。
 
 ```cpp example id="cpp17-templates-attributes" std="c++17" file="main.cpp" kind="single" compilers="all" output="medium"
 #include <iostream>
@@ -28,7 +54,7 @@ int main() {
 }
 ```
 
-属性主要表达意图和触发诊断，不应依赖编译器忽略返回值警告来保证业务正确性。非类型模板参数仍受允许类型范围约束，这一范围在 C++20 中继续扩大。
+程序输出 `medium`。`answer` 的类型由 `21` 推导为 `int`；`classify` 的返回值被实际检查；`fallthrough` 明确表示从 `case 2` 继续执行 `default` 不是遗漏 `break`。属性主要表达意图和触发诊断，非类型模板参数则仍受 C++17 允许类型范围约束。
 
 ## `auto` 非类型模板参数
 

@@ -1,6 +1,25 @@
 # `string_view`
 
-`string_view` 是不拥有字符数据的轻量视图，适合只读参数、解析切片和避免临时字符串分配。
+## 学习目标与字符串切片成本
+
+C++14 中，只读函数若接收 `const std::string&`，调用字符串字面量时可能先构造临时字符串；接收 `const char*` 又会丢失显式长度。用 `substr` 提取字段会创建新字符串并复制字符，而“指针加长度”的手写组合缺少统一接口，也容易遗漏生命周期。
+
+C++17 的 `std::string_view` 是不拥有字符数据的连续只读视图。它把指针和长度包装成值类型，可同时观察字符串对象、字面量或缓冲区片段，并以常数成本移动观察窗口。
+
+读完后，你应能按值传递视图，判断底层存储何时失效，区分视图长度与 C 字符串终止符，并为需要所有权的接口选择 `string`。
+
+## 最小接口
+
+```text
+std::string_view view = "header:value";
+auto field = view.substr(7);       // 只调整观察范围，不复制字符
+view.remove_prefix(7);             // 修改视图，不修改底层数据
+view.data();                       // 不承诺在 view.size() 处是 '\0'
+```
+
+## 第一个完整示例
+
+`value_after` 接收和返回视图：返回结果仍观察调用方的 `configuration`，解析过程没有创建子字符串。
 
 ```cpp example id="cpp17-string-view" std="c++17" file="main.cpp" kind="single" compilers="all" output="cpp17"
 #include <iostream>
@@ -19,7 +38,7 @@ int main() {
 }
 ```
 
-视图不延长底层字符串生命周期，也不保证以空字符结尾。不要返回指向局部 `std::string` 的视图；调用要求 C 字符串的 API 时应显式构造拥有数据的字符串。
+程序输出 `cpp17`。在 `value` 使用期间，`configuration` 仍然存活且没有被修改，因此视图有效。视图不延长底层字符串生命周期，也不保证以空字符结尾；调用要求 C 字符串的 API 时应显式构造拥有数据的字符串。
 
 ## 表示与复杂度
 

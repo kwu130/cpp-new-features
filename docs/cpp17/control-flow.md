@@ -1,6 +1,32 @@
 # 结构化绑定与条件语句增强
 
-结构化绑定可以为数组、元组和类似结构体的成员命名。`if`/`switch` 初始化语句缩短临时对象作用域，`if constexpr` 则在编译期丢弃不适用分支。
+## 学习目标与 C++14 的限制
+
+C++14 已能用 `auto` 接住复杂类型，但拆解 `pair`、`tuple` 或结构体时仍要反复写 `first`、`second`、`get<I>`；查询容器时，迭代器也常被迫声明在条件语句外，作用域比真正需要的范围更大。模板若根据类型选择实现，则通常依赖重载、标签分派或 SFINAE，普通 `if` 的两个分支都会被实例化。
+
+C++17 用三组彼此独立但经常配合使用的能力改善这些问题：
+
+- 结构化绑定为一个复合对象的组成部分建立名字；
+- `if`/`switch` 初始化语句把辅助对象限制在整条控制语句内；
+- `if constexpr` 根据编译期条件丢弃不适用的模板分支。
+
+读完后，你应能选择按值或按引用绑定，判断初始化变量的销毁时机，并准确解释“丢弃分支”与运行期跳过分支的区别。
+
+## 最小语法
+
+```text
+auto [key, value] = pair_object;          // 分解副本
+auto& [key, value] = pair_object;         // 分解原对象
+
+if (auto it = container.find(key); it != container.end()) { /* ... */ }
+switch (auto code = read_code(); code) { /* ... */ }
+
+if constexpr (compile_time_condition) { /* ... */ }
+```
+
+## 第一个完整示例
+
+下面的程序把三项能力串在一起：查询产生的迭代器只在 `if` 中存在，映射元素以只读引用分解，模板函数只实例化适合当前类型的分支。
 
 ```cpp example id="cpp17-control-flow" std="c++17" file="main.cpp" kind="single" compilers="all" output="answer=42"
 #include <iostream>
@@ -28,7 +54,7 @@ int main() {
 }
 ```
 
-结构化绑定使用 `auto`、`auto&` 或 `const auto&` 时同样需要考虑复制。`if constexpr` 只会丢弃依赖模板参数的不适用代码，它不是普通运行期条件的替代品。
+程序输出 `answer=42`。`const auto& [name, value]` 没有复制映射元素；`value` 是整数，因此 `print_value<int>` 只保留整数分支。结构化绑定使用 `auto`、`auto&` 或 `const auto&` 时同样需要考虑复制。`if constexpr` 只会丢弃不适用代码，它不是普通运行期条件的替代品。
 
 ## 结构化绑定的三种协议
 

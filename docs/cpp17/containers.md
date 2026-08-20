@@ -1,6 +1,27 @@
 # 容器接口增强
 
-关联容器加入节点句柄，可在不复制元素的情况下转移节点；`try_emplace` 和 `insert_or_assign` 更明确地区分“缺失时构造”与“存在时覆盖”。
+## 学习目标与关联容器更新问题
+
+C++14 的 `map::emplace` 已能原地构造元素，但当键已存在时，传入的映射值实参仍可能提前构造；更新现有值又常写成一次查找加条件分支。把元素从一个关联容器搬到另一个容器时，通常还要移动或复制值，容器内为排序保持 `const` 的键也无法直接修改。
+
+C++17 用节点句柄暴露已分配节点的临时所有权，并加入 `try_emplace`、`insert_or_assign` 和 `merge`。这些接口分别表达“转移节点”“仅缺失时构造”“无论是否存在都得到指定值”，选择应由业务意图决定。
+
+读完后，你应能追踪提取与插入失败时的节点所有权，区分三种插入/更新接口的构造行为，并检查分配器、键冲突、迭代器与异常保证。
+
+## 最小接口
+
+```text
+auto node = source.extract(key);                    // source 不再拥有节点
+auto result = destination.insert(std::move(node)); // 失败时节点在 result.node
+destination.merge(source);                          // 可转移的节点离开 source
+
+map.try_emplace(key, mapped_constructor_arguments...);
+map.insert_or_assign(key, mapped_value);
+```
+
+## 第一个完整示例
+
+示例先延迟构造映射值，再提取节点、在容器外修改映射值、插入目标容器，最后用覆盖接口把值设为确定结果。
 
 ```cpp example id="cpp17-containers" std="c++17" file="main.cpp" kind="single" compilers="all" output="answer=43"
 #include <iostream>
@@ -21,7 +42,7 @@ int main() {
 }
 ```
 
-节点只能在兼容的容器和分配器条件下转移。`try_emplace` 在键已存在时不会构造映射值，适合构造成本高或不可移动的值。
+程序输出 `answer=43`。提取后 `source` 不再拥有 `answer` 节点；成功插入后传入的句柄为空，所有权归 `destination`。节点只能在兼容的容器和分配器条件下转移；`try_emplace` 在键已存在时不会构造映射值。
 
 ## 节点句柄的所有权
 

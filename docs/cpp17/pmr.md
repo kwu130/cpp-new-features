@@ -1,6 +1,29 @@
 # 多态内存资源 `pmr`
 
-`std::pmr` 把分配策略从容器类型中分离。相同容器类型可在运行期选择单调缓冲区、池资源或自定义资源。
+## 学习目标与分配器类型传播
+
+传统标准分配器是容器模板参数的一部分。即使两个 `vector` 只采用不同内存策略，它们也会成为不同 C++ 类型；分配器传播规则还会渗入复制、移动、交换和嵌套容器。短生命周期批处理若逐次调用通用堆，也可能付出不必要的元数据与释放成本。
+
+C++17 的多态内存资源库位于 `std::pmr`。`polymorphic_allocator` 在类型层保持一致，通过 `memory_resource*` 在运行期选择分配策略；标准提供单调资源、同步与非同步池资源以及默认/空资源。
+
+读完后，你应能选择资源、安排资源与容器的生命周期，理解虚调用和上游资源模型，并判断跨资源移动为何可能从常数时间退化为逐元素操作。
+
+## 最小接口
+
+```text
+std::pmr::monotonic_buffer_resource arena(buffer, size);
+std::pmr::vector<int> values(&arena);
+
+class custom_resource : public std::pmr::memory_resource {
+    // 覆盖 do_allocate、do_deallocate、do_is_equal
+};
+```
+
+资源只管理原始存储，元素构造与析构仍由分配器和容器完成。
+
+## 第一个完整示例
+
+示例把固定数组作为单调资源的初始缓冲区，并让向量及其嵌套字符串使用同一个资源。这里的声明顺序保证资源比容器后析构。
 
 ```cpp example id="cpp17-pmr" std="c++17" file="main.cpp" kind="single" compilers="all" output="alpha beta"
 #include <array>
@@ -20,7 +43,7 @@ int main() {
 }
 ```
 
-单调资源只在资源整体释放时回收内存，适合批量、阶段性生命周期。使用资源的对象不能比资源活得更久；跨资源移动容器也可能退化为逐元素移动。
+程序输出 `alpha beta`。若初始缓冲区不足，单调资源会向其上游资源申请额外块；容器逐项销毁时不会让单调资源单独回收每块存储。使用资源的对象不能比资源活得更久，跨资源移动也可能退化为逐元素操作。
 
 ## 分配器问题与 `memory_resource`
 

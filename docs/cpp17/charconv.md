@@ -1,6 +1,26 @@
 # `from_chars` 与 `to_chars`
 
-字符转换接口不依赖区域设置、不分配内存，也不通过异常报告普通解析失败，适合高性能协议和文本处理。
+## 学习目标与传统转换接口的取舍
+
+C++14 的字符串流表达力强，但会携带区域设置和格式状态，且可能分配；`stoi` 一族接受字符串对象并用异常报告普通输入失败；`strtol` 一族依赖 C 风格终止和全局错误状态。协议解析和批量序列化通常更需要明确边界、无分配以及可直接检查的错误结果。
+
+C++17 的 `from_chars` 与 `to_chars` 在调用方提供的字符范围上工作，不跳过空白、不要求空字符结尾、不使用区域设置，也不通过异常报告格式错误。它们是低层转换原语，不负责字段切分、前缀识别或输出缓冲区增长。
+
+读完后，你应能同时检查错误码与停止指针，处理部分消费和缓冲区不足，并理解整数与浮点重载的格式及工具链边界。
+
+## 最小接口
+
+```text
+auto parsed = std::from_chars(first, last, value, base);
+auto written = std::to_chars(first, last, value, base);
+
+// result.ptr：停止或写入结束位置
+// result.ec ：std::errc{}、invalid_argument 或 result_out_of_range 等
+```
+
+## 第一个完整示例
+
+示例要求十进制输入被完整消费，再把同一个整数写成十六进制。输出缓冲区由调用方拥有，最终视图长度由返回指针计算。
 
 ```cpp example id="cpp17-charconv" std="c++17" file="main.cpp" kind="single" compilers="all" output="value=42, hex=2a"
 #include <array>
@@ -26,7 +46,7 @@ int main() {
 }
 ```
 
-`from_chars` 不会自动要求消费完整输入，调用者应同时检查错误码和返回指针。浮点字符转换虽然属于 C++17，但早期标准库实现支持较晚，跨工具链时应特别验证。
+程序输出 `value=42, hex=2a`。解析成功只说明形成了一个值；首个检查还要求 `ptr` 到达输入末尾。写入成功后，`written.ptr - buffer.data()` 才是有效字符数。浮点字符转换虽然属于 C++17，但早期标准库实现支持较晚，跨工具链时应特别验证。
 
 ## 设计目标
 

@@ -1,6 +1,26 @@
 # Filesystem
 
-`<filesystem>` 提供路径拼接、目录遍历和文件状态等跨平台接口，避免手写字符串路径与平台 API。
+## 学习目标与平台路径问题
+
+C++14 标准库没有统一文件系统接口。项目往往把路径当普通字符串拼接，并分别调用 POSIX 或 Windows API；分隔符、根路径、编码、符号链接、错误码和目录遍历行为因此散落在条件编译中。
+
+C++17 的 `<filesystem>` 提供路径的词法模型、状态查询、目录迭代和常见文件操作。它统一了 C++ 接口，但不会抹平文件系统权限、竞态、大小写、链接与编码差异；跨平台意味着显式处理差异，而不是假定操作必定成功。
+
+读完后，你应能区分纯词法操作与访问磁盘的操作，选择异常或 `error_code` 重载，并识别检查后使用竞态和符号链接边界。
+
+## 最小接口
+
+```text
+namespace fs = std::filesystem;
+fs::path file = fs::path{"reports"} / "daily.txt";
+auto name = file.filename();             // 词法操作，不访问磁盘
+bool present = fs::exists(file);          // 状态查询，可能失败且立即过时
+fs::create_directories(file.parent_path());
+```
+
+## 第一个完整示例
+
+示例只构造和拆解路径，不访问真实文件系统，因此输出不受当前目录内容影响。
 
 ```cpp example id="cpp17-filesystem" std="c++17" file="main.cpp" kind="single" compilers="all" output="report.txt"
 #include <filesystem>
@@ -13,7 +33,7 @@ int main() {
 }
 ```
 
-路径应通过 `/` 运算符组合，不要手工拼接分隔符。真实文件操作可能失败，应使用异常接口或带 `std::error_code` 的重载处理权限、竞争和不存在等情况。
+程序输出 `report.txt`。`operator/` 根据路径语法加入组件，`filename()` 只取得最后一个词法部分。路径应通过路径接口组合，不要手工拼接分隔符；真实文件操作可能失败，应选择异常接口或带 `std::error_code` 的重载处理错误。
 
 ## `path` 不是普通字符串
 
