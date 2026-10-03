@@ -1,12 +1,46 @@
 # Concepts 与约束
 
-## 学习目标与 C++17 模板约束问题
+阅读前建议先了解：[普通模板推导](../prerequisites.md#普通模板与类型推导)、[类型萃取](../cpp11/functional-tools.md#先分别使用-tuple-与类型萃取)；不必先掌握 SFINAE。本篇介绍的新增能力属于 C++20；后续版本差异会另行标注。
 
-C++17 泛型代码通常用 `enable_if`、检测惯用法和 `if constexpr` 限制模板。它们能判断表达式是否合法，却常把条件藏进返回类型或额外模板参数；多个候选的强弱关系也需要手工编码，错误信息容易深入函数体。
+## 这个特性解决什么问题
 
-C++20 Concepts 把约束提升为模板接口的一部分。命名 Concept 可以组合类型性质与 requires-expression，约束参与候选可行性和偏序，却不会产生运行期检查。
+模板参数的名字 T 不说明哪些类型可以传入。若函数需要整数，普通模板可能先接受字符串，再在函数体深处报错。C++20 Concept 把“允许的类型或操作”写在接口处：不满足约束时，该模板不是可用候选。
 
-读完后，你应能定义与复用 Concept，区分四种约束写法，读懂 requires-expression 的四类要求，并理解约束规范化、原子约束身份和语义要求的边界。
+Concept 是一个命名的编译期条件，constraint（约束）是应用到模板的条件。它仍使用原来的模板实例化机制，不是新的运行期类型系统。先学会约束普通函数，再阅读 requires-expression（检查表达式是否合法）与重载选择。
+
+## 先约束一个函数模板
+
+传统代码可用 enable_if 与 is_integral 在声明中排除非整数类型；Concept 用命名条件表达同样的输入限制。下面两个函数对本例的整数输入都返回 42。
+
+```cpp example id="cpp20-concept-basic-comparison" std="c++20" file="main.cpp" kind="single" compilers="all" output="old=42, modern=42"
+#include <concepts>
+#include <iostream>
+#include <type_traits>
+
+template <typename T>
+typename std::enable_if<std::is_integral<T>::value, T>::type
+old_twice(T value) { return value + value; }
+
+template <std::integral T>
+T twice(T value) { return value + value; }
+
+static_assert(std::integral<int>);
+static_assert(!std::integral<double>);
+
+int main() {
+    std::cout << "old=" << old_twice(21) << ", modern=" << twice(21) << '\n';
+}
+```
+
+integral 是标准库定义的“整数类型”Concept，本例并不需要自行实现它。enable_if 的旧写法只用于对比，初学者可以先看现代声明。约束在编译期检查，不会为调用增加运行期 if。注意类型检查不能排除整数加法溢出等运行期错误。
+
+不满足约束的调用应当在接口处被拒绝：
+
+```text
+twice(1.5); // double 不满足 integral：没有可用的 twice 候选
+```
+
+适合在泛型库与可复用接口中声明必要能力；只有一两个固定类型的业务函数可以直接写普通重载。Concept 不能静态验证排序关系、结合律等所有语义性质。
 
 ## 最小语法
 
@@ -21,7 +55,7 @@ template <typename T> requires Addable<T> T combine(T, T);
 Addable auto normalize(Addable auto value);   // 缩写函数模板
 ```
 
-## 第一个完整示例
+## 组合示例：命名与组合约束
 
 示例的 `Arithmetic` 组合两个标准 Concept，`add` 再附加整数宽度约束。约束在重载解析时检查，函数体不需要运行期类型分支。
 
@@ -51,17 +85,17 @@ int main() {
 
 程序输出 `42`。`twice(10)` 满足算术约束并得到 `20`，随后 `int` 同时满足 `integral` 和尺寸条件。Concept 应描述调用者真正依赖的语义能力，而不是只罗列碰巧使用的具体类型。
 
-## 从 SFINAE 到约束系统
+## 进一步理解：从 SFINAE 到约束系统
 
 C++20 之前常把 `enable_if` 放进返回类型或模板参数，通过替换失败移除候选。这能工作，但接口难读，失败位置可能深入实现。Concept 把“哪些类型可用”提升为声明的一部分，编译器在重载解析期间规范化并比较约束。
 
 约束失败不是函数体编译失败：不满足的模板通常不会成为可行候选，诊断能指出哪个原子约束为假。函数体仍应只使用约束承诺的操作，否则错误依然会出现在实例化深处。
 
-SFINAE 主要描述“某次模板参数替换是否形成有效声明”，而约束系统还把条件纳入候选之间的偏序。两个函数参数列表相同但约束强弱不同，编译器可以通过 subsumption 选择更受约束者，不必把优先级编码到额外标签或整数模板技巧中。
+SFINAE（模板参数替换失败时，从相应重载候选中移除该模板，而不是立即报错） 主要描述“某次模板参数替换是否形成有效声明”，而约束系统还把条件纳入候选之间的偏序（用来选择更合适的重载）。两个函数参数列表相同但约束强弱不同，编译器可以通过 subsumption 选择更受约束者，不必把优先级编码到额外标签或整数模板技巧中。
 
 Concept 不是布尔类型别名，而是受特殊语法和规范化规则管理的命名约束。Concept 定义必须出现在命名空间作用域，不能显式特化或部分特化来偷偷改变某个类型的满足关系。需要扩展时，应组合更基础的 Concept 或把定制点建模成表达式能力。
 
-约束检查只影响模板可用性，不会在运行期插入 `if`。同一个满足约束的模板仍按每组模板实参生成普通特化，ABI 和代码膨胀问题与其他模板相同。
+约束检查只影响模板可用性，不会在运行期插入 `if`。同一个满足约束的模板仍按每组模板实参生成普通特化，ABI（二进制接口约定，例如调用方式与对象布局） 和代码膨胀问题与其他模板相同。
 
 ## 定义与使用形式
 
@@ -73,12 +107,15 @@ Concept 是产生布尔常量的命名模板，可由类型萃取、其他 Conce
 #include <concepts>
 #include <cstddef>
 #include <iostream>
+#include <ranges>
 #include <vector>
 
 template <typename Range>
-concept IntegerRange = requires(const Range& values) {
+concept IntegerRange = std::ranges::input_range<const Range> &&
+                       requires(const Range& values) {
     typename Range::value_type;
     requires std::same_as<typename Range::value_type, int>;
+    requires std::same_as<std::ranges::range_value_t<const Range>, int>;
     { values.size() } noexcept -> std::convertible_to<std::size_t>;
     { values.begin() };
     { values.end() };
@@ -100,7 +137,7 @@ int main() {
 }
 ```
 
-这个 requires-expression 同时使用四类 requirement：
+这里先用 input_range<const Range> 保证实际可遍历，再展示四类 requirement（要求）。仅有 begin/end 的名字并不能保证能递增、比较或读取元素；四类语法的教学约束也不是最简的真实求和接口：
 
 - `typename Range::value_type;` 是类型 requirement，只检查名称能否表示类型；
 - `values.begin();` 是简单 requirement，只检查表达式可形成；
@@ -151,7 +188,7 @@ Concept 定义本身应是稳定的语义接口。修改公共 Concept 的条件
 
 复用 Concept 时，编译器会把外层模板参数映射到 Concept 定义中的参数，再形成原子约束。映射本身如果产生不合法类型，例如在不受保护的路径里形成 `V&*`，可能使程序不合法，而不是简单得到 false。组合约束要让“保护性”条件位于能短路后续映射的位置。
 
-约束满足结果会参与声明匹配和实例化。依赖程序中稍后出现的显式特化、宏差异或不一致声明来改变同一原子约束真值，会破坏编译器缓存和 ODR 假设。Concept 所依赖的 traits 与定制点应在首次使用前稳定定义。
+约束满足结果会参与声明匹配和实例化。依赖程序中稍后出现的显式特化、宏差异或不一致声明来改变同一原子约束真值，会破坏编译器缓存和 ODR（单一定义规则，约束一个程序中同一实体的多处声明和定义） 假设。Concept 所依赖的 traits 与定制点应在首次使用前稳定定义。
 
 约束表达式的最终类型必须是 `bool`，不会像普通 `if` 条件那样接受任意显式/隐式“可转 bool”对象。类型萃取通常使用 `_v` 成员；把 `std::is_integral<T>` 类型对象本身误放进约束不是等价写法。
 
@@ -225,6 +262,14 @@ Concept 完全在编译期工作，不为对象增加标签或虚调用。它可
 - 若标准 Concept 语法满足但算法出错，检查不可静态验证的代数语义。
 - 若修改 trait 后结果不一致，检查首次约束检查前定义和各翻译单元 ODR。
 - 将深层 requirement 提取成命名 Concept，通常能同时改善重用和诊断。
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp20/concepts.md
+```
 
 ## 权威资料
 

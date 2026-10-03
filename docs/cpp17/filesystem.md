@@ -1,5 +1,7 @@
 # Filesystem
 
+阅读前建议先了解：[字符串与视图](string-view.md)、[迭代器](../prerequisites.md#迭代器与算法)；了解异常与错误码是两种报告方式。本篇介绍的新增能力属于 C++17；后续版本差异会另行标注。
+
 ## 学习目标与平台路径问题
 
 C++14 标准库没有统一文件系统接口。项目往往把路径当普通字符串拼接，并分别调用 POSIX 或 Windows API；分隔符、根路径、编码、符号链接、错误码和目录遍历行为因此散落在条件编译中。
@@ -17,6 +19,19 @@ auto name = file.filename();             // 词法操作，不访问磁盘
 bool present = fs::exists(file);          // 状态查询，可能失败且立即过时
 fs::create_directories(file.parent_path());
 ```
+
+## 把平台路径操作放进标准接口
+
+以下片段只对比写法；完整、可运行的程序见后文。
+
+```text
+std::filesystem::path path = "data";
+path /= "report.txt"; // 组合路径，不手拼分隔符
+std::error_code error;
+bool present = std::filesystem::exists(path, error);
+```
+
+path 处理路径表达，exists 才查询外部文件系统；二者不是同一种操作。适合路径组合、状态查询和遍历，但路径解析不保证文件可访问，exists 之后再打开也可能发生变化。可以选择异常或 error_code 形式；先处理错误，再解释 present，不能把权限错误当作不存在。
 
 ## 第一个完整示例
 
@@ -165,6 +180,14 @@ int main() {
 - rename 跨设备失败：标准接口不保证跨文件系统移动事务。
 - `error_code` 仍保留旧错觉：每次调用后紧邻解释 ec 与返回值。
 - 删除范围过大：日志并二次确认规范化精确目标，禁止根/空路径。
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp17/filesystem.md
+```
 
 ## 权威资料
 

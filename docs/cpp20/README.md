@@ -2,57 +2,63 @@
 
 C++20 是现代 C++ 的又一次大型升级。Concepts 与 Ranges 重塑泛型接口，Coroutines 把可挂起函数纳入语言，Modules 改变声明传播与构建图；三路比较、编译期增强、非拥有视图、格式化、日历和新并发原语则直接改善日常工程代码。
 
-本专题假设读者已掌握 C++11–17 的模板、值类别、Lambda、智能指针、标准容器、线程与内存模型。文章继续采用“旧版本问题 → 最小语法 → 完整示例 → 输出解释 → 底层模型 → 工程边界”的渐进结构。
+本专题面向掌握基本 C++ 语法的读者。需要的前置知识在各篇开头给出链接，先完成入门示例，再按需阅读深入规则。
 
 ## 如何使用本专题
 
-所有标记为 `cpp` 的示例均由验证器以 `-std=c++20 -Wall -Wextra -pedantic` 提取、编译和运行。普通示例面向 GCC 与 Clang；Modules 使用多文件示例，并由专门的 GCC CI 任务按工具链实际构建 BMI、对象文件和最终程序。
+所有标记为 `cpp` 的示例均由验证器以 `-std=c++20 -Wall -Wextra -pedantic` 提取、编译和运行。普通示例面向 GCC 与 Clang；Modules 使用多文件示例，由现有 Ubuntu CI 的 GCC 矩阵分支按工具链实际构建 BMI、对象文件和最终程序。
 
 C++20 的几个大特性不能只靠语法记忆：Concepts 仍有语义要求，View 常不拥有源，协程返回类型决定帧生命周期，Modules 需要构建系统先理解依赖。建议先完成前两阶段，再学习架构级专题。
 
 ## 推荐学习路线
 
-### 第一阶段：日常语言能力
+### 第一阶段：局部语言与视图
 
-1. [三路比较运算符](spaceship.md)
-2. [指定初始化](designated-initialization.md)
-3. [`consteval`、`constinit` 与扩展 `constexpr`](compile-time.md)
-4. [Lambda 与模板增强](lambdas-and-templates.md)
+1. [指定初始化](designated-initialization.md)
+2. [三路比较运算符](spaceship.md)
+3. [consteval、constinit 与扩展 constexpr](compile-time.md)
+4. [span](span.md)
 
-这一阶段重点区分：比较类别不只是三态整数，指定初始化仍受聚合与声明顺序约束，三个常量相关关键字职责不同，显式模板 Lambda 仍会生成闭包成员函数模板。
+先理解字段名、比较、编译期要求和非拥有连续内存窗口，无需先学习约束偏序。
 
-### 第二阶段：受约束泛型与非拥有抽象
+### 第二阶段：日常标准库
 
-5. [Concepts 与约束](concepts.md)
-6. [Ranges 与 Views](ranges.md)
-7. [`span`](span.md)
+5. [字符串和容器常用增强](library-conveniences.md)
+6. [format](format.md)
+7. [source_location](source-location.md)
+8. [位运算工具与数学常量](bit-and-numbers.md)
+9. [日历、时区与 chrono](chrono.md)
 
-先用 Concepts 理解能力声明，再学习 Ranges 的迭代器/哨兵和惰性 View，最后把同样的非拥有生命周期思维应用到连续内存 span。
+按实际用途学习，确认当前标准库是否实现所需接口，时区数据库是否可用。
 
-### 第三阶段：实用标准库
+### 第三阶段：现代泛型编程
 
-8. [`format`](format.md)
-9. [`source_location`](source-location.md)
-10. [日历、时区与 `chrono` 增强](chrono.md)
-11. [位运算工具与数学常量](bit-and-numbers.md)
-12. [字符串和容器常用增强](library-conveniences.md)
+10. [Concepts：先约束普通模板](concepts.md#先约束一个函数模板)
+11. [Lambda 与模板增强](lambdas-and-templates.md)
+12. [Ranges 与 Views](ranges.md)
 
-这组能力大多可局部采用，但仍需关注标准库实现完整度、格式字符串来源、日志路径隐私、时区数据部署、位操作溢出和容器查找复杂度。
+Concepts 先学“哪些类型能调用”，再学 requires-expression 和偏序；Ranges 先比较普通循环与管道，再进入迭代器、哨兵和 borrowed_range。
 
-### 第四阶段：并发与协作取消
+### 第四阶段：并发与高级控制流
 
-13. [`jthread`、停止令牌与协作取消](jthread.md)
-14. [`latch`、`barrier` 与 `semaphore`](synchronization.md)
-15. [原子等待与 `atomic_ref`](atomic.md)
-
-学习顺序从线程所有权开始，再进入高层同步状态机，最后回到原子内存序和对象表示。新接口可以减少条件变量样板，但不会自动保证公平、取消及时或数据竞争自由。
-
-### 第五阶段：架构级特性
-
-16. [Coroutines](coroutines.md)
+13. [jthread 与协作取消](jthread.md)
+14. [latch、barrier 与 semaphore](synchronization.md)
+15. [原子等待与 atomic_ref](atomic.md)
+16. [Coroutines：先手动暂停与恢复](coroutines.md#先看暂停与恢复)
 17. [Modules](modules.md)
 
-Coroutines 和 Modules 分别要求异步生命周期设计与构建系统支持。建议结合实际任务/生成器库和真实 CI 工具链验证，不把教学协议类型或某个编译器命令直接视为稳定跨平台方案。
+协程语言机制不自动创建线程；异步调度是建立在生命周期与同步之上的库协议。Modules 需要独立理解依赖扫描、模块产物和链接流程。
+
+## 验证本版本示例
+
+从仓库根目录运行：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp20
+python3 tools/verify_examples.py --compiler g++ --path docs/cpp20
+```
+
+普通示例要求 GCC 与 Clang；请用 `--version` 确认编译器身份。GCC 专用示例在 Clang 下跳过，属于未验证项。
 
 ## 特性覆盖矩阵
 
@@ -95,4 +101,4 @@ Coroutines 和 Modules 分别要求异步生命周期设计与构建系统支持
 
 完成本专题后，应能在 C++17 项目中有边界地引入 C++20：说明特性影响的是声明、对象、运行期状态还是构建图；指出谁拥有资源、何时可能挂起或阻塞；并为工具链支持、异常、取消、生命周期和跨线程可见性建立验证方案。
 
-[返回仓库总览](../../README.md)
+[继续阅读 C++23](../cpp23/README.md) · [返回仓库总览](../../README.md)

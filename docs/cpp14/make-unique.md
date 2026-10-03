@@ -1,5 +1,7 @@
 # `make_unique`
 
+阅读前建议先了解：[独占所有权](../cpp11/smart-pointers.md)、[移动语义](../cpp11/move-semantics.md#先比较复制与移动)；转发实现不是使用工厂的前提。本篇介绍的新增能力属于 C++14；后续版本差异会另行标注。
+
 ## 学习目标与 C++11 的空缺
 
 C++11 提供 `unique_ptr` 和 `make_shared`，却没有与之对应的标准 `make_unique`。创建独占对象时仍常写 `std::unique_ptr<T>(new T(args...))`，类型名称重复，裸 `new` 暂时暴露在调用表达式中，也不利于统一代码审查规则。
@@ -19,6 +21,19 @@ auto array = std::make_unique<Element[]>(count);
 ```
 
 一般单对象优先使用 `make_unique`。需要自定义删除器、特殊分配资源或接管既有裸指针时，才直接构造带明确删除策略的 `unique_ptr`。
+
+## 对比创建独占对象的写法
+
+以下片段只对比写法；完整、可运行的程序见后文。
+
+```text
+// C++11
+std::unique_ptr<Person> person(new Person("Ada", 37));
+// C++14：初始化完成就交给独占所有者
+auto person = std::make_unique<Person>("Ada", 37);
+```
+
+两种写法对本例构造相同的 Person 并交由 unique_ptr 管理，现代写法省去显式 new 与重复类型。以下示例给出完整的 Person 定义。普通对象创建优先使用工厂；自定义删除器、私有构造或特殊分配策略不应强行套用 make_unique。
 
 ## 第一个完整示例
 
@@ -132,7 +147,7 @@ int main() {
 - 来自对象池、共享内存或特定 allocator 的对象；
 - 必须携带额外释放上下文的 C API 句柄。
 
-这些场景应把释放策略编码进 `unique_ptr<Resource, Deleter>` 的类型。删除器若包含状态，可能增加智能指针对象大小；无状态删除器通常可利用空基类优化。资源的创建函数最好直接返回最终的 RAII 类型，避免裸句柄在调用方停留。
+这些场景应把释放策略编码进 `unique_ptr<Resource, Deleter>` 的类型。删除器若包含状态，可能增加智能指针对象大小；无状态删除器通常可利用空基类优化。资源的创建函数最好直接返回最终的 RAII（把资源释放绑定到管理对象的析构） 类型，避免裸句柄在调用方停留。
 
 `make_unique` 也不能接收 allocator。需要 arena/placement new 时，创建和销毁必须使用同一资源协议，通常由自定义删除器捕获资源指针。删除器生命周期必须覆盖最终释放，不能捕获即将销毁的局部 allocator 引用。
 
@@ -207,6 +222,14 @@ int main() {
 - allocator/arena 是否需要专用工厂而非 `make_unique`？
 - PImpl 析构是否放在完整类型可见的实现文件？
 - 是否立即把工厂结果移动进最终所有者？
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp14/make-unique.md
+```
 
 ## 权威资料
 

@@ -17,34 +17,53 @@ C++11 是从传统 C++ 走向现代 C++ 的关键版本。它没有抛弃静态�
 
 ## 推荐学习路线
 
-### 第一阶段：先写出更清楚的局部代码
+先阅读[基础知识](../prerequisites.md)，再按下面顺序学习。只需完成每篇的入门部分就可以继续；并发与模板进阶不必成为学习普通语法的门槛。
 
-1. [类型推导：`auto` 与 `decltype`](type-deduction.md)
-2. [统一初始化、初始化列表与 `nullptr`](initialization.md)
-3. [范围 `for`](range-for.md)
-4. [移动语义与完美转发](move-semantics.md)
-5. [Lambda 表达式](lambdas.md)
+### 第一阶段：局部代码与基本表达
 
-这一阶段重点回答：变量的真实类型是什么、对象是否被复制、引用是否有效、资源能否安全转移，以及回调捕获了什么。
+1. [类型推导：auto 与 decltype](type-deduction.md)
+2. [列表初始化与 nullptr](initialization.md)
+3. [范围 for](range-for.md)
+4. [Lambda 的参数与捕获](lambdas.md)
 
-### 第二阶段：理解类型系统和类设计
+重点是识别副本和引用、看懂输出、写出简单循环与回调。
 
-6. [可变参数模板与类型别名](templates.md)
-7. [`constexpr` 与 `static_assert`](compile-time.md)
-8. [类定义能力增强](class-improvements.md)
-9. [`noexcept`、字面量、线程局部存储、对齐与属性](core-utilities.md)
+### 第二阶段：对象与资源管理
 
-这一阶段重点回答：哪些工作发生在编译期、编译器会生成哪些特殊成员、接口怎样表达不可复制和不抛异常，以及后续标准放宽了哪些限制。
+5. [类定义能力增强](class-improvements.md)
+6. [移动语义入门](move-semantics.md#先比较复制与移动)，暂时跳过完美转发
+7. [智能指针](smart-pointers.md)
+8. [容器增强](containers.md)
 
-### 第三阶段：使用新的标准库设施
+重点是说明谁负责释放资源、什么时候会复制或转移、观察者什么时候失效。
 
-10. [智能指针](smart-pointers.md)
-11. [容器增强](containers.md)
-12. [`tuple`、类型萃取与可调用对象](functional-tools.md)
-13. [`chrono`、随机数与正则表达式](utility-libraries.md)
-14. [并发编程](concurrency.md)
+### 第三阶段：模板与编译期能力
 
-这一阶段重点回答：谁拥有资源、容器的布局和失效规则是什么、何时需要类型擦除，以及线程之间如何建立可证明的同步关系。
+9. [参数包与类型别名](templates.md)，先学声明和递归展开
+10. [tuple、类型萃取与调用工具](functional-tools.md)
+11. [constexpr 与 static_assert](compile-time.md)
+12. 返回[完美转发与引用折叠](move-semantics.md#完美转发与引用折叠)，再看[模板工厂](templates.md#完美转发工厂)
+
+这一阶段才进入类型推导细节、SFINAE（模板替换失败时移除候选）与泛型接口设计，不要求先读懂所有高级重载规则。
+
+### 第四阶段：实用库与并发
+
+13. [noexcept、字面量、对齐与线程局部存储](core-utilities.md)
+14. [chrono、随机数与正则](utility-libraries.md)
+15. [并发编程](concurrency.md)
+
+并发先学线程生命周期、锁与条件变量，再学原子与内存序。完成后进入 [C++14](../cpp14/README.md)。
+
+## 验证本版本示例
+
+从仓库根目录运行：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp11
+python3 tools/verify_examples.py --compiler g++ --path docs/cpp11
+```
+
+普通示例要求 GCC 与 Clang；请用 `--version` 确认编译器身份。GCC 专用示例在 Clang 下跳过，属于未验证项。
 
 ## 特性覆盖矩阵
 

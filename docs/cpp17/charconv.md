@@ -1,5 +1,7 @@
 # `from_chars` 与 `to_chars`
 
+阅读前建议先了解：[字符串视图](string-view.md)及指针半开区间；不需要先学区域设置实现。本篇介绍的新增能力属于 C++17；后续版本差异会另行标注。
+
 ## 学习目标与传统转换接口的取舍
 
 C++14 的字符串流表达力强，但会携带区域设置和格式状态，且可能分配；`stoi` 一族接受字符串对象并用异常报告普通输入失败；`strtol` 一族依赖 C 风格终止和全局错误状态。协议解析和批量序列化通常更需要明确边界、无分配以及可直接检查的错误结果。
@@ -17,6 +19,20 @@ auto written = std::to_chars(first, last, value, base);
 // result.ptr：停止或写入结束位置
 // result.ec ：std::errc{}、invalid_argument 或 result_out_of_range 等
 ```
+
+## 从高层字符串转换到区间解析
+
+以下片段只对比写法；完整、可运行的程序见后文。
+
+```text
+// 传统接口：std::stoi(text)，可能抛异常
+// C++17：接收明确的字符区间，并返回位置与错误码
+int value = 0;
+auto result = std::from_chars(first, last, value);
+if (result.ec == std::errc{} && result.ptr == last) { /* 完整解析 */ }
+```
+
+from_chars 不自动跳过前导空白，行为不等同于 stoi；成功也不一定消费整串。适合协议与配置中的可控数字区间，避免区域设置和转换接口自身的分配；需要本地化、空白容忍或详细错误信息时，应在上层明确处理。to_chars 则要求调用者提供足够输出空间。
 
 ## 第一个完整示例
 
@@ -163,6 +179,14 @@ int main() {
 - 浮点格式/精度是否与往返要求一致？
 - 最低标准库是否真实实现所用浮点重载？
 - 批量解析错误路径是否保证指针继续推进或退出？
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp17/charconv.md
+```
 
 ## 权威资料
 

@@ -1,5 +1,7 @@
 # 日历、时区与 `chrono` 增强
 
+阅读前建议先了解：[C++11 chrono](../cpp11/utility-libraries.md)；日历日期、连续时间与时区分层学习。本篇介绍的新增能力属于 C++20；后续版本差异会另行标注。
+
 ## 学习目标与时间点之外的日期问题
 
 C++17 `chrono` 擅长时钟、时间点和时长，却没有标准民用日历与时区数据库接口。项目常手写月份天数、闰年与当地时间转换，或依赖平台库；夏令时切换中的不存在/重复当地时间尤其容易被当成普通偏移计算。
@@ -18,6 +20,21 @@ if (!date.ok()) { /* 拒绝无效字段组合 */ }
 sys_days serial_day = date;       // 连续日期表示，适合排序和相减
 year_month_day restored = serial_day;
 ```
+
+## 先构造日期，再处理时区
+
+以下片段只对比写法；完整、可运行的程序见后文。
+
+```text
+using namespace std::chrono;
+year_month_day date = 2024y / February / 29d;
+if (date.ok()) {
+    sys_days day = date;
+    // day 表示连续的天，适合按天求差
+}
+```
+
+传统代码常把年、月、日保存在三个裸整数中，再手写校验。新类型表达字段含义，但构造并不自动拒绝无效日期，仍须检查 ok()。日历算术、按天求差和时区转换分别处理；只需测量耗时时，C++11 steady_clock 已足够，无需时区数据库。
 
 ## 第一个完整示例
 
@@ -165,6 +182,14 @@ C++20 chrono 还增加 `utc_clock`、`tai_clock`、`gps_clock`、`file_clock` �
 - 测耗时是否使用 `steady_clock` 而非可跳变 `system_clock`？
 - UTC、TAI、GPS 与 Unix 风格 `sys_time` 是否被准确区分？
 - 目标标准库是否真实支持所用 tzdb/format 功能？
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp20/chrono.md
+```
 
 ## 权威资料
 

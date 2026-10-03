@@ -1,5 +1,7 @@
 # `constexpr` 与 `static_assert`
 
+阅读前建议先了解：[普通模板](../prerequisites.md#普通模板与类型推导)与 const；进阶部分需要[对象生命周期](../prerequisites.md#对象生命周期与引用)。本篇介绍的新增能力属于 C++11；后续版本差异会另行标注。
+
 ## 学习目标与前置知识
 
 读者应理解 `const`、函数调用和编译错误。读完后，你应该能够区分 `const` 与 `constexpr`，编写符合 C++11 限制的常量函数，并用 `static_assert` 在编译期检查不变量。
@@ -20,7 +22,29 @@ static_assert(square(2) == 4, "square must work");
 
 `constexpr` 函数不保证每次都在编译期运行；只有实参和使用语境要求常量时，调用才必须成功常量求值。
 
-## 第一个完整示例
+## 先比较常量与函数计算
+
+传统写法用枚举或整型常量保存已经算好的结果。constexpr 函数把计算本身写成普通函数，既可用于常量表达式，也可以接收运行期输入；static_assert 则把检查提前到编译阶段。
+
+```cpp example id="cpp11-constexpr-basic-comparison" std="c++11" file="main.cpp" kind="single" compilers="all" output="old=49, constant=49, ordinary=49"
+#include <iostream>
+
+enum { old_square = 7 * 7 };
+constexpr int square(int value) { return value * value; }
+static_assert(square(7) == old_square, "the calculations agree");
+
+int main() {
+    constexpr int constant = square(7);
+    int input = 7;
+    int ordinary = square(input);
+    std::cout << "old=" << old_square << ", constant=" << constant
+              << ", ordinary=" << ordinary << '\n';
+}
+```
+
+constant 和 static_assert 都要求常量求值成功；ordinary 的初始化不要求语言层面的常量表达式，优化器仍可能折叠为 49。观察最终机器码有没有函数调用，不能代替判断语义。适合在数组尺寸、固定配置、纯计算与编译期检查中使用；文件读取、I/O 和线程操作不适合放进常量求值路径。
+
+## 综合示例：递归计算与断言
 
 下面用 C++11 允许的单个返回表达式递归计算阶乘，并用编译期断言验证结果。
 
@@ -69,7 +93,7 @@ constexpr 非静态成员函数在 C++11 隐式具有 const 成员语义，适�
 
 const 只禁止经该名字修改对象，初始化值可以来自运行期；constexpr 变量必须在编译期得到常量值并隐含顶层 const。`const int n = read();` 不是数组常量边界，`constexpr int n = 4;` 才明确满足。
 
-constexpr 函数参数本身不是 constexpr 变量；一次具体调用能否常量求值取决于实参和执行路径。函数体也不能用关键字声明“这个参数总是编译期”。C++20 consteval 才表达每次潜在调用必须立即求值。
+constexpr 函数参数本身不是 constexpr 变量；一次具体调用能否常量求值取决于实参和执行路径。函数体也不能用关键字声明“这个参数总是编译期”。C++20 consteval 可以要求普通调用点的立即调用产生常量表达式；立即函数上下文内的组合调用另有规则，见[C++20 编译期能力](../cpp20/compile-time.md)。
 
 ## 编译器求值模型
 
@@ -91,7 +115,7 @@ C++11 语法要求第二个字符串字面量消息；省略消息是 C++17 才�
 
 模板内 `static_assert` 若条件依赖模板参数，会在具体实例化时检查；若条件完全非依赖且为 false，模板定义本身立即失败。想让某个兜底分支仅在实例化时诊断，常使用 `dependent_false` 萃取，而不是直接 `static_assert(false, ...)`。
 
-断言适合平台假设（字节数、对齐）、模板能力和固定协议常量，不适合验证运行期用户输入。也不要断言编译器私有布局来“锁定”本未承诺的 ABI，除非该平台就是明确部署契约。
+断言适合平台假设（字节数、对齐）、模板能力和固定协议常量，不适合验证运行期用户输入。也不要断言编译器私有布局来“锁定”本未承诺的 ABI（二进制接口约定，例如调用方式与对象布局），除非该平台就是明确部署契约。
 
 ### 与 `integral_constant` 配合
 
@@ -169,6 +193,14 @@ constexpr 属于函数声明契约的一部分，声明和定义必须一致。�
 - 编译期与运行期实现是否产生相同业务结果？
 - 大计算是否导致每个翻译单元重复构建开销？
 - 最小、最大和零输入是否都有 `static_assert` 测试？
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp11/compile-time.md
+```
 
 ## 权威资料
 

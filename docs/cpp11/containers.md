@@ -1,5 +1,7 @@
 # 容器增强
 
+阅读前建议先了解：[迭代器与算法](../prerequisites.md#迭代器与算法)；emplace 部分结合[移动与转发](move-semantics.md)。本篇介绍的新增能力属于 C++11；后续版本差异会另行标注。
+
 ## 学习目标与旧容器的空缺
 
 C++03 已有 `vector`、`list`、`map` 等容器，但固定长度数组仍常用原生数组，哈希容器没有标准接口，单向链表依赖第三方实现，把对象放入容器还经常先构造临时对象再复制。
@@ -14,6 +16,20 @@ C++11 增加 `array`、`forward_list`、无序关联容器和 `emplace` 系列�
 | `forward_list<T>` | 提供低额外开销的单向链表 |
 | `unordered_map/set` | 提供基于哈希的平均常数时间查找 |
 | `emplace` | 从构造参数直接建立容器元素 |
+
+## 先根据存储需求选择容器
+
+以下片段只对比写法；完整、可运行的程序见后文。
+
+```text
+// 固定长度：原生数组 vs 有标准容器接口的数组
+int old_values[3] = {1, 2, 3};
+std::array<int, 3> values{{1, 2, 3}};
+// 从构造参数建立元素，而不是先建立一个临时 pair
+records.emplace("Ada", 37);
+```
+
+array 不自动变长，元素仍在对象内部；它可查询 size 并传给标准算法。unordered_map 按哈希查找，平均查找成本与有序 map 不同，也不保持键的排序。emplace 有时减少临时对象，但不保证总比 insert 快；根据是否需要排序、引用稳定性和实际负载选择。
 
 ## 第一个完整示例
 
@@ -182,6 +198,14 @@ API 若只需要遍历，不应暴露具体容器类型；C++11 可用迭代器�
 - vector 扩容后旧元素引用是否失效？
 - `max_load_factor` 调整是否导致后续 rehash 峰值？
 - 是否错误依赖 unordered 遍历顺序稳定？
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp11/containers.md
+```
 
 ## 权威资料
 

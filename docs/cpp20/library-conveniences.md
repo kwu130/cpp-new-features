@@ -1,5 +1,7 @@
 # 字符串和容器常用增强
 
+阅读前建议先了解：[标准算法](../prerequisites.md#迭代器与算法)、[容器](../cpp11/containers.md)、[string_view](../cpp17/string-view.md)。本篇介绍的新增能力属于 C++20；后续版本差异会另行标注。
+
 ## 学习目标与常见惯用法标准化
 
 C++17 中，前后缀判断常写成长度计算加 `compare`/`find`，键存在性写成 `find != end`，顺序容器删除条件元素则重复 erase-remove 惯用法。这些代码并不困难，但容易在无符号边界、容器接口差异和意图表达上出错。
@@ -18,6 +20,20 @@ map.contains(key);
 auto removed = std::erase(sequence, value);
 auto removed_if = std::erase_if(container, predicate);
 ```
+
+## 直接表达存在性与条件删除
+
+以下片段只对比写法；完整、可运行的程序见后文。
+
+```text
+// 传统：find != end、erase-remove 惯用法
+bool found = values.find(key) != values.end();
+// C++20：只判断存在时意图更直接
+bool found = values.contains(key);
+auto removed = std::erase_if(sequence, predicate);
+```
+
+这几条表达式分别讨论；contains 与传统存在性查询对有效键给出相同结果，不改变容器查找复杂度。还要读取元素时继续使用 find，避免查两次；erase_if 表达删除并返回数量，但仍遵守底层容器失效规则。starts_with/ends_with 字符接口不替代 Unicode 或路径语义。
 
 ## 第一个完整示例
 
@@ -162,6 +178,14 @@ C++20 还让许多标准库组件 constexpr 化，并为 map/`unordered_map` 等
 - ssize 与无符号分配大小转换前是否检查负数？
 - `to_array` 的字符串字面量结果是否考虑末尾零元素？
 - 是否误把 C++23 `string::contains` 写入 C++20 代码？
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp20/library-conveniences.md
+```
 
 ## 权威资料
 

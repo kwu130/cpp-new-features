@@ -1,5 +1,7 @@
 # `string_view`
 
+阅读前建议先了解：[对象生命周期](../prerequisites.md#对象生命周期与引用)与 std::string；视图不会取得所有权。本篇介绍的新增能力属于 C++17；后续版本差异会另行标注。
+
 ## 学习目标与字符串切片成本
 
 C++14 中，只读函数若接收 `const std::string&`，调用字符串字面量时可能先构造临时字符串；接收 `const char*` 又会丢失显式长度。用 `substr` 提取字段会创建新字符串并复制字符，而“指针加长度”的手写组合缺少统一接口，也容易遗漏生命周期。
@@ -16,6 +18,19 @@ auto field = view.substr(7);       // 只调整观察范围，不复制字符
 view.remove_prefix(7);             // 修改视图，不修改底层数据
 view.data();                       // 不承诺在 view.size() 处是 '\0'
 ```
+
+## 复制字符与观察字符的区别
+
+以下片段只对比写法；完整、可运行的程序见后文。
+
+```text
+// 传统切片：创建拥有字符的新字符串
+std::string field = text.substr(offset, count);
+// C++17：只保存指向原字符的观察窗口
+std::string_view field = std::string_view(text).substr(offset, count);
+```
+
+两种切片在源内容稳定时读到相同字符，但所有权不同：string 保存独立内容，string_view 依赖 text 的存活和存储稳定。适合只读参数与短期解析；结果需要离开源作用域或长期保存时，应创建 string。视图的 data() 不保证是可独立使用的零结尾 C 字符串。
 
 ## 第一个完整示例
 
@@ -163,6 +178,14 @@ int main() {
 - 异步任务是否直接捕获调用者视图而未复制？
 - 哈希容器长期键的字符内容是否会变化？
 - UTF-8 size 是否被误解释成 Unicode 字符数量？
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp17/string-view.md
+```
 
 ## 权威资料
 

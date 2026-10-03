@@ -10,13 +10,15 @@ import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 
 
 META_RE = re.compile(r'^\s*<!--\s*example\s+(.+?)\s*-->\s*$')
 FENCE_RE = re.compile(r'^\s*```([^\s`]*)?(?:\s+(.*?))?\s*$')
 LINK_RE = re.compile(r'(?<!!)(?<!`)\[[^\]]+\]\(([^)]+)\)')
-VALID_STANDARDS = {"c++11", "c++14", "c++17", "c++20"}
+VALID_STANDARDS = {"c++11", "c++14", "c++17", "c++20", "c++23"}
+REQUIREMENT_RE = re.compile(r"(__cpp(?:_lib)?_[a-z0-9_]+)>=(\d+)L?")
 
 
 @dataclass
@@ -29,6 +31,7 @@ class Example:
     line: int
     output: str | None = None
     files: dict[str, str] = field(default_factory=dict)
+    requires: str | None = None
 
 
 class VerificationError(RuntimeError):
@@ -145,6 +148,9 @@ def collect_examples(root: Path, selected: str | None) -> list[Example]:
                 raise VerificationError(f"{path}:{meta_line}: unsupported standard {metadata['std']!r}")
             if metadata["compilers"] not in {"all", "gcc", "clang"}:
                 raise VerificationError(f"{path}:{meta_line}: invalid compilers value")
+            requirement = metadata.get("requires")
+            if requirement is not None and REQUIREMENT_RE.fullmatch(requirement) is None:
+                raise VerificationError(f"{path}:{meta_line}: requires must be a feature macro comparison, e.g. __cpp_lib_expected>=202202")
             identifier = metadata["id"]
             example = groups.get(identifier)
             if example is None:
@@ -156,6 +162,7 @@ def collect_examples(root: Path, selected: str | None) -> list[Example]:
                     source=path,
                     line=meta_line,
                     output=metadata.get("output"),
+                    requires=requirement,
                 )
                 groups[identifier] = example
             elif (
@@ -163,6 +170,7 @@ def collect_examples(root: Path, selected: str | None) -> list[Example]:
                 or example.kind != metadata["kind"]
                 or example.compilers != metadata["compilers"]
                 or example.source != path
+                or example.requires != requirement
             ):
                 raise VerificationError(f"{path}:{meta_line}: inconsistent or cross-document duplicate ID {identifier!r}")
             filename = metadata["file"]
@@ -188,10 +196,31 @@ def run_command(command: list[str], cwd: Path, timeout: int = 30) -> subprocess.
     return subprocess.run(command, cwd=cwd, text=True, capture_output=True, timeout=timeout, check=False)
 
 
+@lru_cache(maxsize=None)
+def supports_feature(compiler: str, standard: str, requirement: str) -> bool:
+    """Check the advertised feature, without treating a failed compiler as a skip."""
+    match = REQUIREMENT_RE.fullmatch(requirement)
+    assert match is not None
+    macro, minimum = match.groups()
+    with tempfile.TemporaryDirectory(prefix="cpp-doc-feature-") as directory:
+        work = Path(directory)
+        probe = work / "feature.cpp"
+        probe.write_text(
+            f"#include <version>\n#if defined({macro}) && {macro} >= {minimum}L\n"
+            "CPP_DOC_FEATURE_AVAILABLE\n#endif\n", encoding="utf-8"
+        )
+        result = run_command([compiler, f"-std={standard}", "-E", "-P", str(probe)], work)
+        if result.returncode != 0:
+            raise VerificationError(f"feature probe failed for {compiler} ({standard}):\n{result.stdout}{result.stderr}")
+        return "CPP_DOC_FEATURE_AVAILABLE" in result.stdout.splitlines()
+
+
 def verify_one(example: Example, compiler: str) -> str:
     family = compiler_family(compiler)
     if example.compilers not in {"all", family}:
         return "skipped"
+    if example.requires is not None and not supports_feature(compiler, example.standard, example.requires):
+        return f"skipped (requires {example.requires})"
     with tempfile.TemporaryDirectory(prefix=f"cpp-doc-{example.identifier}-") as directory:
         work = Path(directory)
         for filename, content in example.files.items():
@@ -255,7 +284,8 @@ def main() -> int:
         examples = collect_examples(root, args.path)
         if args.list:
             for example in examples:
-                print(f"{example.identifier}\t{example.standard}\t{example.source.relative_to(root)}")
+                requirement = f"\t{example.requires}" if example.requires else ""
+                print(f"{example.identifier}\t{example.standard}\t{example.source.relative_to(root)}{requirement}")
             return 0
         passed = skipped = 0
         for example in examples:
@@ -265,7 +295,8 @@ def main() -> int:
                 print(f"PASS {example.identifier}")
             else:
                 skipped += 1
-                print(f"SKIP {example.identifier}")
+                reason = status.removeprefix("skipped")
+                print(f"SKIP {example.identifier}{reason}")
         print(f"verified with {args.compiler}: {passed} passed, {skipped} skipped")
         return 0
     except VerificationError as error:

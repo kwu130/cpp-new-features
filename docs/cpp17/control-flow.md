@@ -1,8 +1,10 @@
 # 结构化绑定与条件语句增强
 
+阅读前建议先了解：[auto 与引用](../cpp11/type-deduction.md)、[tuple](../cpp11/functional-tools.md#先分别使用-tuple-与类型萃取)；if constexpr 还需要普通模板与类型萃取。本篇介绍的新增能力属于 C++17；后续版本差异会另行标注。
+
 ## 学习目标与 C++14 的限制
 
-C++14 已能用 `auto` 接住复杂类型，但拆解 `pair`、`tuple` 或结构体时仍要反复写 `first`、`second`、`get<I>`；查询容器时，迭代器也常被迫声明在条件语句外，作用域比真正需要的范围更大。模板若根据类型选择实现，则通常依赖重载、标签分派或 SFINAE，普通 `if` 的两个分支都会被实例化。
+C++14 已能用 `auto` 接住复杂类型，但拆解 `pair`、`tuple` 或结构体时仍要反复写 `first`、`second`、`get<I>`；查询容器时，迭代器也常被迫声明在条件语句外，作用域比真正需要的范围更大。模板若根据类型选择实现，则通常依赖重载、标签分派或 SFINAE（模板参数替换失败时，从相应重载候选中移除该模板，而不是立即报错），普通 `if` 的两个分支都会被实例化。
 
 C++17 用三组彼此独立但经常配合使用的能力改善这些问题：
 
@@ -11,6 +13,80 @@ C++17 用三组彼此独立但经常配合使用的能力改善这些问题：
 - `if constexpr` 根据编译期条件丢弃不适用的模板分支。
 
 读完后，你应能选择按值或按引用绑定，判断初始化变量的销毁时机，并准确解释“丢弃分支”与运行期跳过分支的区别。
+
+## 先使用结构化绑定
+
+以前使用 pair 时要反复写 first 和 second；C++17 可以为组成部分取名字。下面对比副本与引用，暂时不引入条件语句或模板分支。
+
+```cpp example id="cpp17-structured-binding-basic" std="c++17" file="main.cpp" kind="single" compilers="all" output="old=42, copy=7, original=9"
+#include <cassert>
+#include <iostream>
+#include <string>
+#include <utility>
+
+int main() {
+    std::pair<std::string, int> record{"Ada", 42};
+    std::cout << "old=" << record.second;
+    auto [copy_name, copy_score] = record;
+    copy_score = 7;
+    assert(record.second == 42);
+    auto& [name, score] = record;
+    score = 9;
+    assert(name == copy_name);
+    std::cout << ", copy=" << copy_score << ", original=" << record.second << '\n';
+}
+```
+
+按值绑定创建隐藏的副本，按引用绑定访问原对象。字段名让局部代码更清楚，但不会免除复制与生命周期判断。需要对只读大对象分解时，通常用 const auto&；有业务语义的长期接口仍可以直接使用具名结构体。
+
+## 再缩小条件变量的作用域
+
+传统写法先声明查询迭代器，再写 if；C++17 把声明放进条件语句，迭代器只在整条 if/else 中可见。
+
+```cpp example id="cpp17-if-initializer-basic" std="c++17" file="main.cpp" kind="single" compilers="all" output="old=42, modern=42"
+#include <iostream>
+#include <map>
+#include <string>
+
+int main() {
+    const std::map<std::string, int> values{{"answer", 42}};
+    {
+        const auto it = values.find("answer"); // 传统写法用额外作用域
+        if (it != values.end()) std::cout << "old=" << it->second;
+    }
+    if (const auto it = values.find("answer"); it != values.end()) {
+        std::cout << ", modern=" << it->second << '\n';
+    }
+}
+```
+
+两次查询行为相同；新写法缩小辅助变量的可见范围，不改变查找复杂度。初始化只执行一次，变量活到整条条件语句结束，在 else 中同样可见。switch 的初始化语句具有相应作用域规则。
+
+## 最后学习编译期分支
+
+普通 if 在模板实例化时仍要求两个分支的相关代码合法。if constexpr 根据编译期条件，在模板实例化时不实例化不适用的分支；它不能用于运行期输入。
+
+```cpp example id="cpp17-if-constexpr-basic" std="c++17" file="main.cpp" kind="single" compilers="all" output="number=42, length=3"
+#include <iostream>
+#include <string>
+#include <type_traits>
+
+template <typename T>
+int measure(const T& value) {
+    if constexpr (std::is_integral_v<T>) {
+        return value;
+    } else {
+        return static_cast<int>(value.size());
+    }
+}
+
+int main() {
+    std::cout << "number=" << measure(42)
+              << ", length=" << measure(std::string("Ada")) << '\n';
+}
+```
+
+measure<int> 不需要形成 int.size()，measure<string> 不需要把 string 当整数返回。C++17 之前可分别使用重载或标签分派；本例的 int 与 string 就可用两个普通重载实现。需要共用模板主体时使用 if constexpr；不要用它隐藏模板之外的语法或类型错误。
 
 ## 最小语法
 
@@ -24,7 +100,7 @@ switch (auto code = read_code(); code) { /* ... */ }
 if constexpr (compile_time_condition) { /* ... */ }
 ```
 
-## 第一个完整示例
+## 组合示例：查询、绑定与编译期分支
 
 下面的程序把三项能力串在一起：查询产生的迭代器只在 `if` 中存在，映射元素以只读引用分解，模板函数只实例化适合当前类型的分支。
 
@@ -72,7 +148,7 @@ int main() {
 
 ### 自定义 tuple-like 协议
 
-用户类型可以通过 `tuple_size`、`tuple_element<I, T>` 和可由成员查找或 ADL 找到的 `get<I>` 参与元组式分解。普通非限定名称查找不会替代协议规定的查找过程，因此 `get` 应与类型位于同一命名空间，或者作为成员模板提供。
+用户类型可以通过 `tuple_size`、`tuple_element<I, T>` 和可由成员查找或 ADL（实参依赖查找，从实参类型关联的命名空间中寻找候选） 找到的 `get<I>` 参与元组式分解。普通非限定名称查找不会替代协议规定的查找过程，因此 `get` 应与类型位于同一命名空间，或者作为成员模板提供。
 
 ```cpp example id="cpp17-custom-structured-binding" std="c++17" file="main.cpp" kind="single" compilers="all" output="rgb=10,25,30"
 #include <cstddef>
@@ -126,7 +202,7 @@ int main() {
 
 ## 初始化语句的作用域
 
-`if (init; condition)` 和 `switch (init; condition)` 让锁、迭代器、解析结果等临时对象只活在整个条件语句内，包括所有 `else` 分支。它减少名称泄漏，也让 RAII 对象在控制流结束时立即释放。
+`if (init; condition)` 和 `switch (init; condition)` 让锁、迭代器、解析结果等临时对象只活在整个条件语句内，包括所有 `else` 分支。它减少名称泄漏，也让 RAII（把资源释放绑定到管理对象的析构） 对象在控制流结束时立即释放。
 
 初始化语句只执行一次。若把锁放在其中，锁会覆盖条件判断和所选分支的整个执行期；这可能比预期临界区更大，应结合业务调整作用域。
 
@@ -207,6 +283,14 @@ discarded statement 中的 return 不参与当前实例的 auto 返回类型推�
 - 丢弃分支是否仍包含非依赖语法/名称硬错误？
 - 嵌套模板中的条件是否仍依赖当前特化？
 - 返回类型是否正确排除当前特化的丢弃 return？
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp17/control-flow.md
+```
 
 ## 权威资料
 

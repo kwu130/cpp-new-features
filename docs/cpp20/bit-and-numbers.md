@@ -1,5 +1,7 @@
 # 位运算工具与数学常量
 
+阅读前建议先了解：[C++14 数字字面量](../cpp14/literals.md)、[类型萃取](../cpp11/functional-tools.md)；对象表示转换不同于数值转换。本篇介绍的新增能力属于 C++20；后续版本差异会另行标注。
+
 ## 学习目标与手写位技巧
 
 C++17 项目常用编译器内建或手写表达式实现置位计数、旋转、二次幂取整和对象表示复制。边界值、类型位宽与有符号运算会让经典“位技巧”产生未定义行为；圆周率等常量又常由项目各自截断定义。
@@ -18,6 +20,20 @@ std::bit_floor(value);  std::bit_ceil(value);  std::bit_width(value);
 std::bit_cast<Destination>(source);
 std::numbers::pi_v<double>;
 ```
+
+## 先选择标准工具，再处理边界
+
+以下片段只对比写法；完整、可运行的程序见后文。
+
+```text
+// 不再为每种编译器选择不同置位计数内建
+int bits = std::popcount(unsigned_value);
+// 数值转换与对象表示转换是不同操作
+auto representation = std::bit_cast<Destination>(source);
+double pi = std::numbers::pi;
+```
+
+popcount 等位工具减少平台代码，仍要求相应的无符号类型和可表示结果。bit_cast 复制对象表示，不做数值换算，大小、可平凡复制性及目标表示都须合法。适合二进制协议与底层数值处理；普通数字类型转换无需 bit_cast，也不能用它绕过指针或生命周期规则。
 
 ## 第一个完整示例
 
@@ -164,6 +180,14 @@ C++20 `<bit>` 尚没有 C++23 的 `byteswap`。需要字节交换时可用经过
 - endian::native 非纯大端/小端平台是否有拒绝路径？
 - 是否误用了 C++23 byteswap 破坏 C++20 基线？
 - 数学常量是否使用与算法精度一致的 `name_v<T>`？
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp20/bit-and-numbers.md
+```
 
 ## 权威资料
 

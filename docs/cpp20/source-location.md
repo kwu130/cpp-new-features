@@ -1,5 +1,7 @@
 # `source_location`
 
+阅读前建议先了解：[string_view](../cpp17/string-view.md)、函数默认实参；先区分调用位置与函数定义位置。本篇介绍的新增能力属于 C++20；后续版本差异会另行标注。
+
 ## 学习目标与诊断宏问题
 
 C++17 日志和断言通常用 `__FILE__`、`__LINE__`、`__func__` 等宏捕获位置。宏能取得调用点，却缺乏统一值类型，包装层容易重新捕获错误位置，函数名和列号的可用形式也因实现而异。
@@ -19,6 +21,20 @@ where.function_name();
 where.line();
 where.column();
 ```
+
+## 从位置宏到默认实参
+
+以下片段只对比写法；完整、可运行的程序见后文。
+
+```text
+// 传统日志包装需要在调用处传宏
+log(message, __FILE__, __LINE__);
+// C++20：在函数声明中保存默认调用点
+void log(std::string_view message,
+         std::source_location where = std::source_location::current());
+```
+
+默认实参中的 current() 取得调用点信息，函数体内再调用 current() 则取得函数体位置。适合日志、断言与错误对象，包装层应转发已经捕获的位置。内容、列号、函数名格式存在实现差异，不应让测试依赖某个工具链的完整字符串。
 
 ## 第一个完整示例
 
@@ -164,6 +180,14 @@ GCC/Clang 的前缀映射选项、MSVC 对应路径映射和构建系统 sandbox
 - 事件聚合是否另有稳定 ID，而非只用易变行号？
 - 插件卸载后异步队列是否还保存来源字符串指针？
 - 错误传播是否同时保留原始发生点与包装上下文？
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp20/source-location.md
+```
 
 ## 权威资料
 

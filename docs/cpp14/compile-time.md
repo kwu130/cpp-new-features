@@ -1,10 +1,39 @@
 # 变量模板与放宽的 `constexpr`
 
+阅读前建议先了解：[C++11 constexpr](../cpp11/compile-time.md)、[普通模板](../prerequisites.md#普通模板与类型推导)。本篇介绍的新增能力属于 C++14；后续版本差异会另行标注。
+
 ## 学习目标与 C++11 的限制
 
 C++11 `constexpr` 函数体通常只能用单个返回表达式，循环算法被迫改写成递归；模板可以定义一族类型或函数，却没有同样直接的“一族变量”语法。
 
 C++14 放宽常量函数体，并加入变量模板。读完后，你应该能够用局部变量、条件和循环编写编译期算法，定义按类型参数实例化的常量，并理解它们在多翻译单元中的实体与链接边界。
+
+## 先比较递归与循环
+
+C++11 的常量函数通常用单个 return 表达式表达计算，求和只能写成递归。C++14 可以用局部变量与循环描述同一算法，让编译期实现更接近普通运行期代码。
+
+```cpp example id="cpp14-constexpr-loop-comparison" std="c++14" file="main.cpp" kind="single" compilers="all" output="recursive=55, loop=55"
+#include <iostream>
+
+constexpr int recursive_sum(int n) { // 适用于 C++11 的写法，要求 n >= 0
+    return n == 0 ? 0 : n + recursive_sum(n - 1);
+}
+
+constexpr int loop_sum(int n) {      // C++14 允许的循环写法
+    int total = 0;
+    for (int i = 1; i <= n; ++i) total += i;
+    return total;
+}
+
+int main() {
+    constexpr int old_result = recursive_sum(10);
+    constexpr int new_result = loop_sum(10);
+    static_assert(old_result == new_result, "same result for this input");
+    std::cout << "recursive=" << old_result << ", loop=" << new_result << '\n';
+}
+```
+
+对本例的非负、小范围输入，两个算法的结果相同；循环避免递归写法及其调用深度，不代表标准保证构建更快。输入范围与溢出仍需要算法契约。变量模板是本篇的另一个独立特性，接下来再组合使用。
 
 ## 最小语法
 
@@ -21,7 +50,7 @@ constexpr int calculate(int input) {
 
 放宽的是函数体表达能力，不代表 C++14 的所有标准库容器都能在常量求值中使用，也不允许常量路径执行动态分配或 I/O。
 
-## 第一个完整示例
+## 组合示例：变量模板与编译期循环
 
 示例用变量模板为不同类型提供零值，并用循环在编译期计算 1 到 10 的和。
 
@@ -99,7 +128,7 @@ int main() {
 
 头文件中的非内联变量定义要遵守单一定义规则。常量模板的链接属性和取地址行为较细致，跨翻译单元共享身份时应设计清楚；C++17 `inline` 变量使头文件定义更直接。
 
-变量模板可以有偏特化和显式特化，用于按类型提供常量或策略对象。例如后续标准库 `_v` 辅助本质上把 `trait<T>::value` 暴露为变量模板。特化仍必须遵守模板与 ODR 规则。
+变量模板可以有偏特化和显式特化，用于按类型提供常量或策略对象。例如后续标准库 `_v` 辅助本质上把 `trait<T>::value` 暴露为变量模板。特化仍必须遵守模板与 ODR（单一定义规则，约束一个程序中同一实体的多处声明和定义） 规则。
 
 模板实参既可以是类型，也可以包含 C++14 允许的非类型参数。`template<class T, std::size_t N> constexpr ...` 能为每个类型/尺寸生成独立实体，但每个组合都可能增加符号和编译工作。
 
@@ -216,6 +245,14 @@ C++14 放宽后，constexpr 成员函数可以是修改对象的非 const 函数
 - 是否错误依赖 C++17 inline variable 语义？
 - 初始化溢出/越界是否用 `static_assert` 覆盖？
 - 构建成本是否随输入规模显著增长？
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp14/compile-time.md
+```
 
 ## 权威资料
 

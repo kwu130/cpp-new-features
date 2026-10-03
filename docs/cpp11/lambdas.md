@@ -1,5 +1,7 @@
 # Lambda 表达式
 
+阅读前建议先了解：[迭代器与算法](../prerequisites.md#迭代器与算法)、[引用生命周期](../prerequisites.md#对象生命周期与引用)。本篇介绍的新增能力属于 C++11；后续版本差异会另行标注。
+
 ## 学习目标与前置知识
 
 读者应先会普通函数、函数对象和 STL 算法。读完后，你应该能够写出 Lambda 的参数、返回类型和捕获列表，理解闭包对象的本质，并避免回调中的悬空引用和共享所有权环。
@@ -20,7 +22,32 @@ C++11 的 Lambda 表达式允许在使用位置创建匿名函数对象，使局
 
 捕获列表决定函数体如何访问外围自动变量：`[value]` 保存副本，`[&value]` 保存引用，`[]` 不捕获。返回类型简单时可省略尾置返回类型。
 
-## 第一个完整示例
+## 先看一个带捕获的 Lambda
+
+传统写法把运算和状态放进函数对象类；Lambda 在使用位置表达同一逻辑。捕获就是让这段局部逻辑保存或访问外围变量。
+
+```cpp example id="cpp11-lambda-capture-basic" std="c++11" file="main.cpp" kind="single" compilers="all" output="old=6, lambda=6, snapshot=6, current=15"
+#include <iostream>
+
+struct Multiply {
+    int factor;
+    int operator()(int value) const { return value * factor; }
+};
+
+int main() {
+    int factor = 2;
+    Multiply old_style{factor};
+    auto snapshot = [factor](int value) { return value * factor; };
+    auto current = [&factor](int value) { return value * factor; };
+    std::cout << "old=" << old_style(3) << ", lambda=" << snapshot(3);
+    factor = 5;
+    std::cout << ", snapshot=" << snapshot(3) << ", current=" << current(3) << '\n';
+}
+```
+
+按值捕获的 factor 是创建时的副本，按引用捕获的 factor 仍指向原变量，因此改变 factor 后得到不同结果。引用捕获不延长原变量寿命。局部算法和短回调适合 Lambda；复杂、需要命名复用的策略可以继续使用函数或类。闭包是编译器生成的函数对象，其布局没有标准保证。
+
+## 组合示例：过滤与累加
 
 第一个 Lambda 按值捕获阈值并过滤元素；第二个 Lambda 按引用捕获计数器，记录算法调用次数。
 
@@ -104,7 +131,7 @@ int main() {
 
 ## 调用与性能模型
 
-直接以模板参数接收 Lambda 时，编译器知道闭包具体类型，通常可以完全内联。存入 `std::function` 会进行类型擦除，可能引入间接调用和堆分配；具体是否分配取决于实现的小对象优化和闭包大小。
+直接以模板参数接收 Lambda 时，编译器知道闭包具体类型，通常可以完全内联。存入 `std::function` 会进行类型擦除（通过统一接口保存和调用不同具体类型），可能引入间接调用和堆分配；具体是否分配取决于实现的小对象优化和闭包大小。
 
 捕获大型对象会增大闭包，每次复制回调也会复制这些成员。可移动但不可复制的资源在 C++11 中较难直接捕获，C++14 初始化捕获解决了这一问题。
 
@@ -155,7 +182,7 @@ int main() {
 
 闭包类型的复制/移动能力由捕获成员决定。C++11 捕获需要变量可按相应方式复制，无法用 `[p = move(p)]` 直接建立 move-only 闭包；可用命名函数对象或等到 C++14。
 
-将 Lambda 暴露在公共 ABI 中很困难，因为类型不可命名且每次重新编译实现可能变化。头文件模板可接受它，稳定边界通常用函数指针、std::function 或自定义接口类，并接受相应开销。
+将 Lambda 暴露在公共 ABI（二进制接口约定，例如调用方式与对象布局） 中很困难，因为类型不可命名且每次重新编译实现可能变化。头文件模板可接受它，稳定边界通常用函数指针、std::function 或自定义接口类，并接受相应开销。
 
 ## 嵌套 Lambda 和捕获传播
 
@@ -190,6 +217,14 @@ int main() {
 - 异常从闭包构造还是调用阶段出现是否区分？
 - 长期 API 是否不应暴露不稳定闭包 ABI 类型？
 - 一次性局部逻辑是否已复杂到应命名函数对象？
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp11/lambdas.md
+```
 
 ## 权威资料
 

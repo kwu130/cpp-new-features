@@ -1,10 +1,12 @@
 # `jthread`、停止令牌与协作取消
 
+阅读前建议先了解：[C++11 线程与锁](../cpp11/concurrency.md)、[所有权与 RAII](../prerequisites.md#所有权与-raii)。本篇介绍的新增能力属于 C++20；后续版本差异会另行标注。
+
 ## 学习目标与线程析构问题
 
 C++11 `std::thread` 在仍可连接时析构会调用 `terminate`，因此每条正常与异常路径都必须显式 `join` 或 `detach`。即使正确连接，标准线程也没有统一的取消状态，项目常用各自原子标志和唤醒协议。
 
-C++20 `std::jthread` 把自动连接纳入 RAII，并与 `stop_source`、`stop_token`、`stop_callback` 共享协作停止模型。停止请求只是线程安全信号，不会强制终止线程或自动中断任意阻塞调用。
+C++20 `std::jthread` 把自动连接纳入 RAII（把资源释放绑定到管理对象的析构），并与 `stop_source`、`stop_token`、`stop_callback` 共享协作停止模型。停止请求只是线程安全信号，不会强制终止线程或自动中断任意阻塞调用。
 
 读完后，你应能安排 jthread 的析构与被引用对象寿命，设计安全停止点和可取消等待，理解回调并发语义，并避免持锁等待、成员析构顺序和分离线程陷阱。
 
@@ -18,6 +20,20 @@ std::jthread worker([](std::stop_token token) {
 worker.request_stop(); // 幂等请求
 worker.join();         // 等待结束；析构时也会按规则请求并连接
 ```
+
+## 把线程回收交给对象
+
+以下片段只对比写法；完整、可运行的程序见后文。
+
+```text
+// 传统 thread 的每条路径都需要安排 join/detach
+std::thread worker(do_work);
+worker.join();
+// C++20：可连接的 jthread 析构时请求停止并 join
+std::jthread worker(do_work);
+```
+
+两者是替代写法，不能重复声明 worker。jthread 适合作用域拥有的工作线程，减少遗漏回收；析构可能阻塞，停止请求也不会强制打断 do_work。要求任务长期独立运行或严格非阻塞析构时，必须另行设计所有权与取消协议。
 
 ## 第一个完整示例
 
@@ -194,6 +210,14 @@ int main() {
 - 系统调用不醒：`stop_token` 不会自动中断不感知它的阻塞 API。
 - 子任务不停：停止状态不会自动形成父子任务树。
 - detach 后 use-after-free：jthread 已失去 join 对捕获生命周期的保护。
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp20/jthread.md
+```
 
 ## 权威资料
 

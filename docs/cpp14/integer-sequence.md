@@ -1,5 +1,7 @@
 # `integer_sequence`
 
+阅读前建议先了解：[参数包](../cpp11/templates.md)、[tuple 访问](../cpp11/functional-tools.md#先分别使用-tuple-与类型萃取)。本篇介绍的新增能力属于 C++14；后续版本差异会另行标注。
+
 ## 学习目标与问题背景
 
 参数包可以展开，却没有内建下标。面对 `tuple<Ts...>` 时，库作者知道元素数量，却不能在运行时循环中把变量 `i` 传给要求编译期常量的 `std::get<i>`。
@@ -16,6 +18,20 @@ std::index_sequence_for<TypeA, TypeB, TypeC>
 ```
 
 调用者通常不应手写这些类型；公共包装函数根据 tuple 或参数包长度生成索引，再把实现细节委托给接收序列标签的辅助函数。
+
+## 把运行期下标换成编译期索引包
+
+以下片段只对比写法；完整、可运行的程序见后文。
+
+```text
+// 两个元素时可手写：
+print(std::get<0>(record), std::get<1>(record));
+// 泛型包装中根据元素数量生成索引：
+using Indices = std::make_index_sequence<2>; // 表示 0, 1
+// 辅助函数中用 get<Indexes>(record)... 展开
+```
+
+get<I> 要求 I 是编译期索引，普通 for 循环的变量不能直接放进去。索引序列适合任意长度 tuple 的泛型适配；固定的两个业务字段直接访问更清楚。序列不存储运行期数组，也不会自动遍历：必须与参数包展开配合。
 
 ## 第一个完整示例
 
@@ -184,7 +200,7 @@ int main() {
 
 ### 错误边界
 
-`tuple_size<decay_t<Tuple>>` 不存在、索引越界或函数不可调用时，错误常出现在 impl 的 decltype 展开。入口可先断言 tuple-like、长度和映射范围；但 C++14 没有 Concepts，检测代码本身也要谨慎 SFINAE。
+`tuple_size<decay_t<Tuple>>` 不存在、索引越界或函数不可调用时，错误常出现在 impl 的 decltype 展开。入口可先断言 tuple-like、长度和映射范围；但 C++14 没有 Concepts，检测代码本身也要谨慎 SFINAE（模板参数替换失败时，从相应重载候选中移除该模板，而不是立即报错）。
 
 自定义序列含重复索引是合法的，可能对同一元素操作多次；含降序也合法。算法若要求排列或唯一性，`integer_sequence` 类型不会自动证明，需额外 constexpr 检查。
 
@@ -237,6 +253,14 @@ int main() {
 - 线性递归实现是否触发模板深度限制？
 - 大型同质数据是否本应使用运行期循环？
 - 错误是否可通过更近的 `static_assert` 提前诊断？
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp14/integer-sequence.md
+```
 
 ## 权威资料
 

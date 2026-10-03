@@ -1,5 +1,7 @@
 # `apply` 与 `invoke`
 
+阅读前建议先了解：[Lambda](../cpp11/lambdas.md)、[tuple](../cpp11/functional-tools.md#先分别使用-tuple-与类型萃取)、[参数包](../cpp11/templates.md)。本篇介绍的新增能力属于 C++17；后续版本差异会另行标注。
+
 ## 学习目标与泛型调用样板
 
 C++14 中，泛型适配器要统一处理普通函数、函数对象和成员指针，必须按可调用对象类别选择不同语法；把一个 `tuple` 的元素变成位置实参，还需手写 `index_sequence` 展开。业务代码因此容易重复标准调用规则。
@@ -15,6 +17,21 @@ std::invoke(callable, arguments...);
 std::invoke(member_pointer, object, arguments...);
 std::apply(callable, tuple_like_arguments);
 ```
+
+## 统一调用与展开元组是两件事
+
+以下片段只对比写法；完整、可运行的程序见后文。
+
+```text
+// 普通函数可直接调用
+function(a, b);
+// invoke 统一处理函数对象、函数指针与成员指针
+std::invoke(callable, a, b);
+// apply 把 tuple 元素当作函数实参
+std::apply(function, arguments);
+```
+
+invoke 适合泛型适配器需要接受不同可调用形式的情况，普通函数调用无需机械包装。apply 省去手写索引序列来展开 tuple；它不会替你管理 tuple 中引用的寿命。下面的完整程序再组合成员访问和元组展开。
 
 ## 第一个完整示例
 
@@ -41,7 +58,7 @@ int main() {
 }
 ```
 
-程序输出 `42`。`apply` 没有在运行期循环读取元组，而是在编译期按索引形成两个位置实参；`invoke` 也不做类型擦除。普通直接调用仍然更清晰，不必为了统一形式而无条件使用这些工具。
+程序输出 `42`。`apply` 没有在运行期循环读取元组，而是在编译期按索引形成两个位置实参；`invoke` 也不做类型擦除（通过统一接口保存和调用不同具体类型）。普通直接调用仍然更清晰，不必为了统一形式而无条件使用这些工具。
 
 ## `invoke` 统一了哪些调用
 
@@ -77,7 +94,7 @@ int main() {
 
 `invoke_result_t<F, Args...>` 给出按 `invoke` 规则调用后的结果类型，替代旧 `result_of` 的许多使用场景。`is_invocable_v` 检查表达式是否形成，`is_invocable_r_v<R, ...>` 还检查结果是否可转换为 `R`；`is_nothrow_invocable_v` 系列检查调用是否为不抛表达式。
 
-这些萃取基于未求值语境，不执行函数。它们适合 SFINAE、静态断言和条件 `noexcept`，但不能保证运行期前置条件，例如指针非空、对象仍存活或业务参数范围正确。
+这些萃取基于未求值语境，不执行函数。它们适合 SFINAE（模板参数替换失败时，从相应重载候选中移除该模板，而不是立即报错）、静态断言和条件 `noexcept`，但不能保证运行期前置条件，例如指针非空、对象仍存活或业务参数范围正确。
 
 萃取的参数类型应与最终调用中的值类别一致。用 `T`、`T&` 和 `T&&` 查询可能得到不同结果，因为调用运算符可以带引用限定符，参数转换也不同。转发包装器通常以 `F&&`、`Args&&...` 查询并在真实表达式里使用相同的 `forward` 形式，避免“萃取说可调用，函数体却采用了另一种值类别”。
 
@@ -156,6 +173,14 @@ C++17 的 `invoke` 返回类型写作 `invoke_result_t` 所描述的类型，`vo
 - tuple-like 的 size、element、get 是否完全一致？
 - 空 tuple 是否能自然调用零参数目标？
 - 已知普通调用是否无需引入 invoke/apply 增加复杂度？
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp17/invoke-apply.md
+```
 
 ## 权威资料
 

@@ -2,50 +2,58 @@
 
 C++17 是一次覆盖面很广的标准更新。它一方面让泛型与日常控制流更容易阅读，另一方面通过纯右值模型、内联变量等变化修正对象与链接语义，还把文件系统、字符串视图、词汇类型和多态内存资源等长期工程需求纳入标准库。
 
-本专题假设读者已掌握 C++11/14 的类型推导、移动语义、Lambda、可变参数模板、智能指针和基础并发。文章采用“旧版本问题 → 最小语法 → 完整示例 → 语义模型 → 工程边界”的渐进结构；第一次阅读可先掌握每篇前半部分，再进入 ODR、实例化、生命周期、并发和分配器细节。
+本专题面向掌握基本 C++ 语法的读者。需要的前置知识在各篇开头给出链接，先完成入门示例，再按需阅读深入规则。
 
 ## 如何使用本专题
 
-所有标记为 `cpp` 的示例都由仓库验证器提取，并以 `-std=c++17 -Wall -Wextra -pedantic` 编译运行。普通示例同时面向 GCC 与 Clang；并行算法示例受本地标准库实现影响，在专门的 GCC CI 任务中验证。
+所有标记为 `cpp` 的示例都由仓库验证器提取，并以 `-std=c++17 -Wall -Wextra -pedantic` 编译运行。普通示例同时面向 GCC 与 Clang；并行算法示例受本地标准库实现影响，由现有 Ubuntu CI 的 GCC 矩阵分支验证。
 
 学习时不要只记新名字。C++17 中最容易出错的地方往往是边界：结构化绑定是否复制、纯右值与 NRVO 是否属于同一保证、视图是否悬空、并行回调是否允许重排，以及 PMR 资源是否比容器活得更久。
 
 ## 推荐学习路线
 
-### 第一阶段：日常表达与泛型代码
+### 第一阶段：日常表达与状态
 
-1. [结构化绑定与条件语句增强](control-flow.md)
-2. [折叠表达式](fold-expressions.md)
+1. [结构化绑定](control-flow.md#先使用结构化绑定)
+2. [if 与 switch 的初始化语句](control-flow.md#再缩小条件变量的作用域)
 3. [类模板实参推导](ctad.md)
-4. [模板参数与属性](templates-and-attributes.md)
+4. [string_view](string-view.md)
+5. [optional、variant 与 any](vocabulary-types.md)
 
-这一阶段先解决“代码怎样写得更直接”：拆解复合对象、缩短查询变量作用域、按类型丢弃模板分支、归约参数包、从构造实参推导类模板参数，并用标准属性表达诊断意图。
+先掌握拆解值、限制变量作用域、区分拥有对象与非拥有视图，以及表达缺失结果。
 
-### 第二阶段：对象与程序实体
+### 第二阶段：模板与对象模型
 
-5. [保证的复制消除](copy-elision.md)
-6. [内联变量与嵌套命名空间](inline-variables.md)
+6. [if constexpr](control-flow.md#最后学习编译期分支)，需要普通模板与类型萃取
+7. [折叠表达式](fold-expressions.md)
+8. [模板参数与属性](templates-and-attributes.md)
+9. [保证的复制消除](copy-elision.md)
+10. [内联变量与嵌套命名空间](inline-variables.md)
+11. [apply 与 invoke](invoke-apply.md)
 
-这两篇不只是语法简化。复制消除专题涉及 C++17 纯右值和临时量实质化模型；内联变量专题涉及跨翻译单元的单一定义规则、实体地址与动态初始化。
+把“声明更短”与“对象模型改变”分开理解；不把 NRVO 当作必然发生的优化。
 
-### 第三阶段：高频词汇与系统接口
+### 第三阶段：库接口与系统能力
 
-7. [`string_view`](string-view.md)
-8. [`optional`、`variant` 与 `any`](vocabulary-types.md)
-9. [Filesystem](filesystem.md)
-10. [`from_chars` 与 `to_chars`](charconv.md)
-
-这一阶段的共同主题是“接口契约”：谁拥有数据、缺失或多态状态怎样表示、路径操作是否访问外部世界、解析成功是否意味着消费了完整输入。
-
-### 第四阶段：泛型库、容器与并发
-
-11. [`apply` 与 `invoke`](invoke-apply.md)
 12. [容器接口增强](containers.md)
-13. [`scoped_lock` 与 `shared_mutex`](concurrency.md)
-14. [带执行策略的算法](parallel-algorithms.md)
-15. [多态内存资源 `pmr`](pmr.md)
+13. [from_chars 与 to_chars](charconv.md)
+14. [Filesystem](filesystem.md)
+15. [scoped_lock 与 shared_mutex](concurrency.md)
+16. [带执行策略的算法](parallel-algorithms.md)
+17. [多态内存资源 pmr](pmr.md)
 
-这些设施适合在理解基础对象生命周期和内存模型后学习。它们减少样板代码，但不会替调用方证明可调用性、节点所有权、死锁自由、数据竞争自由或资源生命周期。
+并行算法在基础并发之后，PMR 在容器与生命周期之后阅读。完成后进入 [C++20](../cpp20/README.md)。
+
+## 验证本版本示例
+
+从仓库根目录运行：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp17
+python3 tools/verify_examples.py --compiler g++ --path docs/cpp17
+```
+
+普通示例要求 GCC 与 Clang；请用 `--version` 确认编译器身份。GCC 专用示例在 Clang 下跳过，属于未验证项。
 
 ## 特性覆盖矩阵
 

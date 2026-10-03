@@ -1,5 +1,7 @@
 # `tuple`、类型萃取与可调用对象
 
+阅读前建议先了解：[普通模板](../prerequisites.md#普通模板与类型推导)、[Lambda](lambdas.md)；tuple、类型萃取和调用包装可以分别学习。本篇介绍的新增能力属于 C++11；后续版本差异会另行标注。
+
 ## 学习目标与阅读路线
 
 C++03 对异构返回值、类型属性查询和可调用对象适配缺少统一标准设施。C++11 引入 `tuple` 组合固定数量的不同类型值，用类型萃取在编译期查询/变换类型，用 `std::function` 和 `std::bind` 统一一部分调用形式。
@@ -8,10 +10,46 @@ C++03 对异构返回值、类型属性查询和可调用对象适配缺少统�
 
 - 创建、访问和解包 `tuple`；
 - 使用常见类型萃取与 `enable_if`；
-- 判断何时需要 `std::function` 的类型擦除；
+- 判断何时需要 `std::function` 的类型擦除（通过统一接口保存和调用不同具体类型）；
 - 看懂 `bind` 的占位符与保存语义，并知道 Lambda 通常更易读。
 
-## 第一个完整示例
+## 先分别使用 tuple 与类型萃取
+
+tuple 把固定数量、不同类型的值组合起来。传统写法也可以使用 struct；字段有业务名称时通常更推荐 struct，tuple 适合局部多值结果与泛型组合。
+
+```cpp example id="cpp11-tuple-basic" std="c++11" file="main.cpp" kind="single" compilers="all" output="name=Ada, score=42"
+#include <iostream>
+#include <string>
+#include <tuple>
+
+int main() {
+    const std::tuple<std::string, int> record("Ada", 42);
+    std::cout << "name=" << std::get<0>(record)
+              << ", score=" << std::get<1>(record) << '\n';
+}
+```
+
+get<0> 与 get<1> 的索引在编译期确定，不是运行期下标；它们返回相应元素的引用。先掌握创建和访问，再进入 tuple_element、tie 或调用包装。
+
+
+类型萃取（type trait）是编译期查询或变换类型的模板。例如下面分别检查“是不是整数类型”和“两个类型是否相同”，无需先理解 SFINAE。
+
+```cpp example id="cpp11-type-trait-basic" std="c++11" file="main.cpp" kind="single" compilers="all" output="integer=true, floating=false"
+#include <iostream>
+#include <type_traits>
+
+int main() {
+    static_assert(std::is_same<std::remove_reference<int&>::type, int>::value,
+                  "remove_reference produces int");
+    std::cout << std::boolalpha
+              << "integer=" << std::is_integral<int>::value
+              << ", floating=" << std::is_integral<double>::value << '\n';
+}
+```
+
+value 是编译期布尔结果，type 是变换后的类型。对固定类型写业务分支通常不需要萃取；泛型函数必须根据类型选择合法操作时才有价值。后面的综合示例再把 tuple、萃取和 bind 组合起来。
+
+## 组合示例：tuple、类型萃取与调用包装
 
 示例把姓名和分数组合为 `tuple`，在编译期检查字段类型，再用 `bind` 固定分数参数并把姓名保留为调用参数。
 
@@ -61,7 +99,7 @@ tuple 赋值逐元素执行，tie 正是利用引用元素把右侧多值写入�
 
 ## 类型萃取与编译期分派
 
-类型萃取是带静态成员或嵌套类型的模板。`is_integral<T>::value` 在编译期产生布尔值，`remove_reference<T>::type` 产生转换后的类型。C++11 常配合 SFINAE 和 `enable_if` 选择重载，但错误信息可能复杂；C++20 Concepts 将提供更直接的约束表达。
+类型萃取是带静态成员或嵌套类型的模板。`is_integral<T>::value` 在编译期产生布尔值，`remove_reference<T>::type` 产生转换后的类型。C++11 常配合 SFINAE（模板参数替换失败时，从相应重载候选中移除该模板，而不是立即报错） 和 `enable_if` 选择重载，但错误信息可能复杂；C++20 Concepts 将提供更直接的约束表达。
 
 萃取只描述语言可判断的类型性质，不能替代业务语义。例如“可复制”不代表复制廉价，“算术类型”也不表示适合所有数学算法。
 
@@ -69,7 +107,7 @@ C++11 萃取大致分为查询型（`is_*`）、关系型（`is_same`/`is_base_o
 
 模板推导得到 T&/const T 时，直接 `is_integral<T>` 可能为 false；是否先 `remove_reference`/`remove_cv` 取决于接口语义。机械 decay 会把数组变指针、函数变函数指针，也可能丢失需要的边界信息。
 
-`is_trivially_*`、`is_standard_layout` 等描述语言类别，可用于优化 memcpy/ABI 互操作，但必须满足每个操作的完整前置条件。trivially copyable 也不意味着对象表示跨平台稳定。
+`is_trivially_*`、`is_standard_layout` 等描述语言类别，可用于优化 memcpy/ABI（二进制接口约定，例如调用方式与对象布局） 互操作，但必须满足每个操作的完整前置条件。trivially copyable 也不意味着对象表示跨平台稳定。
 
 用户只能在标准允许范围特化某些模板；随意特化标准类型萃取通常导致未定义行为。领域能力应定义自己的 trait，并给用户类型提供明确扩展点。
 
@@ -194,6 +232,14 @@ C++11 在提供 Lambda、`bind` 和 `function` 的同时，正式弃用了多组
 - placeholder 顺序是否让公共调用签名难以理解？
 - 成员指针目标对象是否持续存活？
 - traits 的 `type`/`value` 错误是否处于正确 SFINAE 语境？
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp11/functional-tools.md
+```
 
 ## 权威资料
 

@@ -1,5 +1,7 @@
 # 类型推导：`auto` 与 `decltype`
 
+阅读前建议先了解：[引用与副本](../prerequisites.md#对象生命周期与引用)、[普通模板推导](../prerequisites.md#普通模板与类型推导)。本篇介绍的新增能力属于 C++11；后续版本差异会另行标注。
+
 ## 学习目标与阅读路线
 
 本文面向已经会声明变量、使用引用并接触过 STL 迭代器的读者。读完后，你应该能够：
@@ -10,7 +12,7 @@
 - 看懂数组退化、函数类型和代理对象带来的推导陷阱；
 - 知道何时显式类型比自动推导更清楚。
 
-建议先阅读“第一个例子”和两种工具的直观解释，再进入后半篇的 cv/ref 规则、值类别和代理类型。第一次阅读不需要记住整张推导表。
+建议先阅读显式类型与 auto 的对比，再进入后半篇的 cv/ref（const、volatile 限定与引用）规则、[值类别](../prerequisites.md#值类别先区分表达式的用途)和代理类型。代理指的是间接访问数据、并不一定保存独立值的对象；第一次阅读不需要记住整张推导表。
 
 ## C++03 中的问题
 
@@ -51,7 +53,30 @@ decltype(function(argument)) result;
 
 它最常用于尾置返回类型、类型断言和泛型库。需要特别注意括号：对未加括号的变量名，`decltype(name)` 返回声明时的类型；把左值表达式包在额外括号中，`decltype((name))` 通常得到左值引用。
 
-## 第一个完整示例
+## 先比较显式类型与 auto
+
+下面两次遍历访问同一个元素，区别只是是否手写迭代器类型。再观察按值声明与引用声明：auto 省略类型名，但不会替你决定是否复制。
+
+```cpp example id="cpp11-auto-basic-comparison" std="c++11" file="main.cpp" kind="single" compilers="all" output="old=3, modern=3, original=7, copy=3"
+#include <iostream>
+#include <vector>
+
+int main() {
+    std::vector<int> values{3};
+    std::vector<int>::iterator old_it = values.begin(); // 传统写法
+    auto modern_it = values.begin();                   // C++11 写法
+    std::cout << "old=" << *old_it << ", modern=" << *modern_it;
+
+    auto copy = values.front();
+    auto& reference = values.front();
+    reference = 7;
+    std::cout << ", original=" << values.front() << ", copy=" << copy << '\n';
+}
+```
+
+前两个值都是 3，auto 不引入动态类型或额外运行期开销。后面只有引用修改了原元素，副本仍为 3。类型长且由初始化式自然决定时适合用 auto；业务单位或接口需要明确类型时，保留显式声明更清楚。decltype 的表达式规则留到后面的综合示例。
+
+## 综合示例：auto、引用与 decltype
 
 下面的程序同时展示 `auto`、`const auto&` 和 `decltype`。先观察变量如何声明，再阅读输出和断言。
 
@@ -126,7 +151,7 @@ auto&/auto* 模式把限定分布写进声明：`const auto&` 无论实参是否
 
 类型推导完全发生在编译期。编译器在语义分析阶段确定具体类型，之后生成的代码与手写该类型通常没有区别；`auto` 不是 JavaScript 式动态类型，也不会在对象里保存运行期类型标签。
 
-推导后的类型仍参与重载解析、模板实例化和生命周期规则。若推导结果发生变化，源代码虽然仍写着 `auto`，ABI、重载选择或复制成本却可能改变，所以公共接口返回类型的变更仍应按接口变更审查。
+推导后的类型仍参与重载解析、模板实例化和生命周期规则。若推导结果发生变化，源代码虽然仍写着 `auto`，ABI（二进制接口约定，例如调用方式与对象布局）、重载选择或复制成本却可能改变，所以公共接口返回类型的变更仍应按接口变更审查。
 
 局部 auto 会隐藏类型拼写但不隐藏语义。初始化函数从 iterator 改成 `const_iterator`、从值改成代理后，后续重载和赋值行为可能变化；编译器能保证类型正确，不能保证业务仍正确。
 
@@ -161,7 +186,7 @@ auto&/auto* 模式把限定分布写进声明：`const auto&` 无论实参是否
 
 `decltype` 不会执行数组退化：对数组变量名使用 `decltype` 得到完整数组类型。对函数名使用 `decltype` 得到函数类型，而不是函数指针。需要声明“与表达式完全一致”的中间类型时，它比 `auto` 更精确。
 
-标准库中的代理引用是另一个高风险区域。`vector<bool>::reference`、某些迭代器解引用结果和表达式模板对象看起来像普通值，却可能只保存对底层对象的间接访问。使用 `auto` 会保存代理本身；若要立即取得业务值，应显式写目标类型。
+标准库中的代理引用是另一个高风险区域。`vector<bool>::reference`、某些迭代器解引用结果和表达式模板（expression template，用对象记录运算、稍后计算结果的泛型技巧）对象看起来像普通值，却可能只保存对底层对象的间接访问。使用 `auto` 会保存代理本身；若要立即取得业务值，应显式写目标类型。
 
 函数类型按值 auto 退化为函数指针，auto& 保留函数左值引用；decltype(`function_name`) 得到函数类型，不能直接定义该类型的对象但可用于指针/引用声明。回调适配代码要区分函数、函数指针和函数对象。
 
@@ -234,6 +259,14 @@ int main() {
 - 未求值 decltype 中名称是否仍需可访问且语法合法？
 - 跨版本 auto 花括号细节是否在最低标准编译？
 - 是否用 `static_assert` 锁定关键推导结果？
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp11/type-deduction.md
+```
 
 ## 权威资料
 

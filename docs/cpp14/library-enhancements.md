@@ -1,5 +1,7 @@
 # `shared_timed_mutex` 与 `exchange`
 
+阅读前建议先了解：[锁与 RAII](../cpp11/concurrency.md#互斥量与-raii)、[关联容器](../cpp11/containers.md)；exchange 不要求并发背景。本篇介绍的新增能力属于 C++14；后续版本差异会另行标注。
+
 ## 学习目标与本篇范围
 
 C++14 的库增强不像泛型 Lambda 那样集中在一个语法点。本篇围绕高频设施组织：共享定时互斥量与 `shared_lock`、状态替换工具 `exchange`、透明比较器带来的异构查找，以及若干小型 I/O/类型工具。
@@ -22,6 +24,22 @@ State previous = std::exchange(current, replacement);
 ```
 
 共享互斥量负责跨线程同步；`std::exchange` 只是普通对象操作，除非外部已有锁或对象本身只由一个线程访问，否则不能保证线程安全。
+
+## 先分开理解替换值与读写锁
+
+以下片段只对比写法；完整、可运行的程序见后文。
+
+```text
+// 传统替换
+int old = state;
+state = 2;
+// C++14 表达同一件事
+int old = std::exchange(state, 2);
+// 读者使用共享锁，写者使用独占锁
+std::shared_lock<std::shared_timed_mutex> read_lock(mutex);
+```
+
+以上替换语句分别看待，不在同一作用域重复声明 old。exchange 取得旧值并写入新值，不是原子交换；需要跨线程共享时仍须同步。大量只读访问可能适合共享锁，短临界区或频繁写入也可能更适合普通 mutex。综合示例才把两者放在一起。
 
 ## 第一个完整示例
 
@@ -64,7 +82,7 @@ int main() {
 
 ### `shared_lock` 所有权接口
 
-`shared_lock` 类似 `unique_lock` 的共享模式 RAII 包装：支持默认/延迟/尝试/定时/采用锁构造、移动所有权、`owns_lock()`、`operator bool`、`lock/try_lock/unlock`、`release` 和 `swap`。它不可复制。
+`shared_lock` 类似 `unique_lock` 的共享模式 RAII（把资源释放绑定到管理对象的析构） 包装：支持默认/延迟/尝试/定时/采用锁构造、移动所有权、`owns_lock()`、`operator bool`、`lock/try_lock/unlock`、`release` 和 `swap`。它不可复制。
 
 `release()` 只放弃包装器与 mutex 的关联，不调用 `unlock_shared`；调用者必须接管解锁责任。它不是普通提前解锁。需要提前释放通常直接 `unlock()`，保留对象但状态变为不拥有。
 
@@ -86,7 +104,7 @@ int main() {
 
 ### 内存同步而非只保护语句块
 
-写线程在独占解锁前对受保护数据的修改，会通过随后成功获取相应互斥量的线程变得可见。锁的作用既是排他，也是建立跨线程的 happens-before 关系。仅仅把字段声明为 `volatile` 不能替代这种同步。
+写线程在独占解锁前对受保护数据的修改，会通过随后成功获取相应互斥量的线程变得可见。锁的作用既是排他，也是建立跨线程的 happens-before（先发生于关系，用于说明线程间哪些操作的结果必须可见） 关系。仅仅把字段声明为 `volatile` 不能替代这种同步。
 
 共享模式允许多个读线程并发，但它们仍会共同更新互斥量内部的读者计数。高核心数下，这个计数可能成为缓存一致性热点。所以“读多写少”只是使用读写锁的必要线索，不是性能结论；还要比较临界区工作量与锁管理成本。
 
@@ -213,7 +231,7 @@ C++14 `get<T>(tuple)` 可按类型取得 tuple 元素，但要求该类型在 tu
 
 `std::quoted` 返回流代理，按指定定界符/转义符处理简单字符串，并不覆盖 CSV、JSON 的完整语法。代理通常只适合紧邻流表达式使用，不应越过其引用字符串生命周期保存。
 
-C++14 的 `_t` 类型别名只缩短 `typename trait<T>::type` 写法，不改变 SFINAE 发生位置。底层 `::type` 不存在时，究竟安静替换失败还是硬错误仍由使用语境决定。
+C++14 的 `_t` 类型别名只缩短 `typename trait<T>::type` 写法，不改变 SFINAE（模板参数替换失败时，从相应重载候选中移除该模板，而不是立即报错） 发生位置。底层 `::type` 不存在时，究竟安静替换失败还是硬错误仍由使用语境决定。
 
 ## C++14 库增强专项审查
 
@@ -227,6 +245,14 @@ C++14 的 `_t` 类型别名只缩短 `typename trait<T>::type` 写法，不改�
 - 透明比较是否对查询类型与 key 双向一致？
 - quoted 是否被误当作完整 CSV/JSON 解析？
 - `_t` 别名错误是否位于期望的 SFINAE 语境？
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp14/library-enhancements.md
+```
 
 ## 权威资料
 

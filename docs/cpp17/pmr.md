@@ -1,5 +1,7 @@
 # 多态内存资源 `pmr`
 
+阅读前建议先了解：[容器](../cpp11/containers.md)、[所有权与生命周期](../prerequisites.md#所有权与-raii)；分配器只管理存储，容器负责元素。本篇介绍的新增能力属于 C++17；后续版本差异会另行标注。
+
 ## 学习目标与分配器类型传播
 
 传统标准分配器是容器模板参数的一部分。即使两个 `vector` 只采用不同内存策略，它们也会成为不同 C++ 类型；分配器传播规则还会渗入复制、移动、交换和嵌套容器。短生命周期批处理若逐次调用通用堆，也可能付出不必要的元数据与释放成本。
@@ -20,6 +22,20 @@ class custom_resource : public std::pmr::memory_resource {
 ```
 
 资源只管理原始存储，元素构造与析构仍由分配器和容器完成。
+
+## 改变内存策略而不改变容器类型
+
+以下片段只对比写法；完整、可运行的程序见后文。
+
+```text
+// 传统分配器作为模板参数的一部分
+std::vector<int, CustomAllocator<int>> values;
+// C++17：资源在运行期指定，仍是 pmr::vector<int>
+std::pmr::monotonic_buffer_resource resource;
+std::pmr::vector<int> values(&resource);
+```
+
+这是两种不同的容器设计，不在同一作用域重复声明。PMR 让资源策略从容器类型中分离，适合批处理或同生命周期对象图；并不等于自动禁止堆分配。资源必须比所有使用它的容器活得更久；普通小容器、无明确分配瓶颈时无需引入资源层。
 
 ## 第一个完整示例
 
@@ -226,6 +242,14 @@ uses-allocator 构造只对声明支持相应分配器协议的元素传播。`p
 - 错误资源释放：自定义 `do_is_equal` 过度报告兼容。
 - 计数资源无限递归：诊断日志/元数据又从被包装资源分配。
 - 默认资源测试互相污染：全局 `set_default_resource` 未在异常路径恢复。
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp17/pmr.md
+```
 
 ## 权威资料
 

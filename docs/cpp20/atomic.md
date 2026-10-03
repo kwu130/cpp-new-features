@@ -1,5 +1,7 @@
 # 原子等待与 `atomic_ref`
 
+阅读前建议先了解：[C++11 原子与内存序](../cpp11/concurrency.md#原子操作与内存序)；先用默认顺序，再分析更弱内存序。本篇介绍的新增能力属于 C++20；后续版本差异会另行标注。
+
 ## 学习目标与简单状态等待问题
 
 C++17 若要让线程等待一个原子状态变化，通常只能忙等、自行退避，或再建立互斥量与条件变量；后者的通知必须与另一份谓词状态正确配合。已有对象若后来需要原子访问，也无法直接改变公开布局为 `atomic<T>`。
@@ -18,6 +20,20 @@ state.notify_one();
 std::atomic_ref<int> view(existing_aligned_int);
 view.fetch_add(1, std::memory_order_relaxed);
 ```
+
+## 等待值变化，不只不断轮询
+
+以下片段只对比写法；完整、可运行的程序见后文。
+
+```text
+// 传统忙等：持续占用执行资源
+while (state.load() == 0) {}
+// C++20：等待旧值发生变化，配合更新和通知
+state.wait(0);
+// 生产者：state.store(1); state.notify_one();
+```
+
+对这个从 0 到 1 的单向状态，两者都能等待变化；wait 允许实现采用阻塞机制，通知仍须由更新方安排。适合等待简单原子状态；通知不保存事件，状态若先变化又恢复可能漏过中间值。atomic_ref 是另一个独立工具，只用于满足对齐、寿命和一致原子访问要求的已有对象。
 
 ## 第一个完整示例
 
@@ -82,7 +98,7 @@ int main() {
 
 `atomic_ref<T>` 为一个已经存在的 T 对象提供原子操作，适合共享内存布局、外部结构或逐步迁移旧数据。所有指向同一对象的并发访问必须兼容地原子化，混用普通读写仍会数据竞争。
 
-底层对象地址必须满足 `required_alignment`，生命周期必须覆盖所有 `atomic_ref`。对象本身不能是 const，且 T 必须满足规定的可平凡复制等要求。是否无锁可查询，未对齐不能靠实现“凑合”。
+底层对象地址必须满足 `required_alignment`，生命周期必须覆盖所有 `atomic_ref`，T 必须满足规定的可平凡复制等要求。本篇的读写示例使用非 const 类型；不能通过 atomic_ref 修改 const 对象。cv 限定类型的可用操作还涉及 [P3323R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3323r1.html) 对原有规范缺陷的修正，不宜笼统写成“atomic_ref 永远不能引用 const 对象”。是否无锁可查询，未对齐不能靠实现“凑合”。
 
 ```cpp example id="cpp20-atomic-ref-counter" std="c++20" file="main.cpp" kind="single" compilers="all" output="counter=2000"
 #include <atomic>
@@ -178,6 +194,14 @@ int main() {
 - 同一底层对象并发访问是否全部采用原子协议？
 - `atomic_ref` 生命周期结束前是否可能销毁目标对象？
 - lock-free 与跨进程可用性是否在目标平台实际验证？
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp20/atomic.md
+```
 
 ## 权威资料
 

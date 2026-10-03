@@ -2,7 +2,7 @@
 
 C++14 是一次以完善为主的标准更新。它没有改变 C++11 的现代化方向，而是减少样板代码、放宽过于严格的编译期限制，并补齐智能指针工厂、索引序列和共享锁等实用设施。
 
-本专题假设读者已经掌握 C++11 的 `auto`、Lambda、移动语义、`constexpr`、智能指针和基础并发。文章继续采用“旧版本限制 → 最小语法 → 完整示例 → 底层模型 → 工程边界”的渐进结构。
+本专题面向掌握基本 C++ 语法的读者。需要的前置知识在各篇开头给出链接，先完成入门示例，再按需阅读深入规则。
 
 ## 如何阅读
 
@@ -12,22 +12,33 @@ C++14 是一次以完善为主的标准更新。它没有改变 C++11 的现代�
 
 ## 推荐学习路线
 
-### 第一阶段：日常语言表达
+### 第一阶段：简单语法与日常改进
 
-1. [泛型 Lambda 与初始化捕获](lambdas.md)
-2. [返回类型推导与 `decltype(auto)`](return-type-deduction.md)
-3. [变量模板与放宽的 `constexpr`](compile-time.md)
-4. [二进制字面量与数字分隔符](literals.md)
+1. [二进制字面量与数字分隔符](literals.md)
+2. [泛型 Lambda 与初始化捕获](lambdas.md)
+3. [make_unique](make-unique.md)
+4. [返回类型推导与 decltype(auto)](return-type-deduction.md)
 
-这一阶段重点理解：泛型 Lambda 仍是模板、`auto` 与 `decltype(auto)` 的返回语义不同、C++14 常量函数为何能使用循环，以及数字写法不会改变整数类型规则。
+先比较新旧代码，理解静态类型、捕获所有权和返回值是否保留引用。
 
-### 第二阶段：标准库补全
+### 第二阶段：编译期与泛型工具
 
-5. [`make_unique`](make-unique.md)
-6. [`integer_sequence`](integer-sequence.md)
-7. [`shared_timed_mutex`、`exchange` 与常用库增强](library-enhancements.md)
+5. [变量模板与放宽的 constexpr](compile-time.md)
+6. [integer_sequence](integer-sequence.md)
+7. [shared_timed_mutex、exchange 与库增强](library-enhancements.md)
 
-这一阶段重点理解：独占所有权工厂有哪些重载、索引怎样从类型包进入表达式，以及共享读锁和普通状态替换分别解决什么问题。
+索引序列需要先理解 C++11 参数包与 tuple；共享锁需要基础并发知识，exchange 可以独立阅读。接着进入 [C++17](../cpp17/README.md)。
+
+## 验证本版本示例
+
+从仓库根目录运行：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp14
+python3 tools/verify_examples.py --compiler g++ --path docs/cpp14
+```
+
+普通示例要求 GCC 与 Clang；请用 `--version` 确认编译器身份。GCC 专用示例在 Clang 下跳过，属于未验证项。
 
 ## 特性覆盖矩阵
 

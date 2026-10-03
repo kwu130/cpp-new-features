@@ -1,10 +1,53 @@
 # 智能指针
 
+阅读前建议先了解：[所有权与 RAII](../prerequisites.md#所有权与-raii)、[移动语义入门](move-semantics.md#先比较复制与移动)。本篇介绍的新增能力属于 C++11；后续版本差异会另行标注。
+
 ## C++03 中的问题
 
 C++03 常把 `new` 得到的地址保存在裸指针中，再要求每条正常、异常和提前返回路径手工执行匹配的 `delete`。接口只看到 `T*` 时也无法判断它是所有者、临时观察者还是可为空句柄，容易产生泄漏、重复释放和悬空访问。
 
 C++11 把“何时释放资源”绑定到普通对象析构：智能指针离开作用域时自动执行对应删除策略。`unique_ptr` 表示独占所有权，`shared_ptr` 表示共享所有权，`weak_ptr` 表示不延长生命周期的观察关系。
+
+## 先用 unique_ptr 管理一个对象
+
+传统的独占动态对象通常要手工 delete。下面将这个责任交给局部 unique_ptr：所有权是“负责删除”，并不表示只有一个访问者。
+
+```cpp example id="cpp11-unique-ptr-basic" std="c++11" file="main.cpp" kind="single" compilers="all" output="value=42, released=1"
+#include <cassert>
+#include <iostream>
+#include <memory>
+
+struct Value {
+    int& released;
+    explicit Value(int& count) : released(count) {}
+    ~Value() { ++released; }
+    int read() const { return 42; }
+};
+
+int main() {
+    int released = 0;
+    {
+        std::unique_ptr<Value> owned(new Value(released));
+        const Value& observer = *owned;
+        std::cout << "value=" << observer.read();
+    }
+    assert(released == 1);
+    std::cout << ", released=" << released << '\n';
+}
+```
+
+退出内层作用域时，owned 的析构调用 delete，Value 的析构恰好执行一次；observer 不负责释放，也不能在作用域结束后使用。C++11 用显式 new 构造 unique_ptr，C++14 可用 make_unique。若对象根本不需要动态生命周期，直接声明局部 Value 更简单，无需智能指针。
+
+
+传统写法如下，它在正常路径上执行相同的释放动作，但提前返回或抛出异常时必须另行保证清理：
+
+```text
+Value* owned = new Value(released);
+// 使用 *owned
+delete owned;
+```
+
+shared_ptr 只有在多个所有者需要共同延长对象寿命时才使用，它有控制块和引用计数成本；weak_ptr 用来观察共享对象而不形成所有权环。这两类并不是 unique_ptr 的默认升级替代品。
 
 ## 本章学习目标
 
@@ -164,7 +207,7 @@ int main() {
 - 对象删除器。
 - 控制块分配器。
 - 可能直接内嵌的对象存储。
-- 类型擦除后的销毁操作。
+- 类型擦除（通过统一接口保存和调用不同具体类型）后的销毁操作。
 
 最后一个强引用消失时，被管理对象销毁；最后一个弱引用也消失后，控制块才销毁。弱计数的具体内部偏置方式属于实现细节，不能通过猜测计数值依赖它。
 
@@ -327,37 +370,9 @@ int main() {
 
 默认优先使用 `unique_ptr`，只有确有共同生命周期时才使用 `shared_ptr`。不要用同一个裸指针分别构造多个 `shared_ptr`。C++11 尚无 `make_unique`，它在 C++14 中加入；创建共享对象则应优先使用 `make_shared`。
 
-## 所有权首先是接口语义
+## 常见错误与诊断
 
-智能指针的关键不只是自动 `delete`，而是让函数签名表达所有权：按值接收 `unique_ptr` 表示转移，`const unique_ptr&` 表示观察该所有者本身，裸指针或引用通常表示非拥有访问；按值传递 `shared_ptr` 会增加共享所有者。
-
-## `unique_ptr` 的表示与成本
-
-默认删除器的 `unique_ptr<T>` 典型情况下只保存一个指针，移动时转移指针并清空源对象，析构时调用删除器。自定义删除器属于指针类型的一部分，可能增加对象大小；无状态删除器通常能借助空基类优化不占额外空间。
-
-数组需要 `unique_ptr<T[]>`，它使用 `delete[]` 并提供下标访问。不要混用单对象和数组形式，也不要用智能指针管理并非由匹配分配函数获得的资源；文件、套接字等资源应提供对应删除器。
-
-## `shared_ptr` 控制块
-
-共享指针通常包含对象指针和控制块指针。控制块保存强引用计数、弱引用计数、删除器和可能的分配器。复制 `shared_ptr` 原子地增加强计数，最后一个强所有者释放对象；控制块要等最后一个 `weak_ptr` 也离开后才释放。
-
-`make_shared` 通常一次分配同时放置控制块和对象，改善局部性并减少分配次数。但只要弱引用仍在，合并分配的整块内存可能不能归还；大型对象且弱引用长寿时，分开分配有时更合适。
-
-引用计数操作线程安全不等于对象线程安全。多个线程可以安全复制不同 `shared_ptr` 实例，但通过它们访问同一对象仍需对象自己的同步策略。
-
-## `weak_ptr` 与所有权环
-
-双向关系若两端都持有 `shared_ptr`，强计数永远不会归零。应把“拥有”方向建成强引用，把观察或回指方向建成 `weak_ptr`。使用前调用 `lock()` 原子地尝试获得临时强所有者；先 `expired()` 再访问存在检查与使用之间的竞争。
-
-## 常见错误与检查清单
-
-- 从同一裸指针建立多个独立控制块会导致重复释放。
-- 对栈对象构造默认 `shared_ptr` 会错误删除栈内存。
-- 捕获 `shared_from_this()` 的长期回调可能形成自环。
-- `use_count()` 只适合诊断，不能作为并发业务判断。
-- C++14 及以后优先 `make_unique`；C++11 创建共享对象可优先 `make_shared`。边界处明确所有权，内部算法尽量使用引用或观察指针。
-
-## 更完整的错误模式
+use_count() 是观察用的快照，不能证明并发独占。边界处明确所有权，内部算法优先使用引用或观察指针；具体错误分别检查如下。
 
 ### 重复控制块
 
@@ -458,7 +473,7 @@ int main() {
 
 - 所有权是唯一、共享还是只观察，类型是否准确表达？
 - `unique_ptr` 自定义删除器是否匹配资源获取方式？
-- 是否在 release 后立即把裸资源交给新 RAII 所有者？
+- 是否在 release 后立即把裸资源交给新 RAII（把资源释放绑定到管理对象的析构） 所有者？
 - `shared_ptr` 是否从同一裸指针创建了两个控制块？
 - `make_shared` 的对象与控制块共同分配寿命是否可接受？
 - `shared_ptr` 别名构造是否保持正确所有者但指向子对象？
@@ -479,6 +494,14 @@ int main() {
 - `make_shared` 后内存迟迟不归还：弱引用可能仍保留合并控制块分配。
 - PImpl 编译报 incomplete type：把拥有类析构定义移到实现类型完整处。
 - 异步回调悬空：根据语义捕获 shared 所有权或 weak 后在执行时 lock。
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp11/smart-pointers.md
+```
 
 ## 权威资料
 

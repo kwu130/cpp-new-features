@@ -1,8 +1,10 @@
 # `scoped_lock` 与 `shared_mutex`
 
+阅读前建议先了解：[C++11 互斥量与 RAII](../cpp11/concurrency.md#互斥量与-raii)、[共享锁](../cpp14/library-enhancements.md)。本篇介绍的新增能力属于 C++17；后续版本差异会另行标注。
+
 ## 学习目标与 C++14 并发接口的缺口
 
-C++11 已提供互斥量与 RAII 锁，C++14 又加入 `shared_timed_mutex`。但一次管理多把锁仍常写成 `std::lock` 加多个采用锁标签，步骤容易遗漏；不需要定时接口的读写锁也缺少更直接的类型。
+C++11 已提供互斥量与 RAII（把资源释放绑定到管理对象的析构） 锁，C++14 又加入 `shared_timed_mutex`。但一次管理多把锁仍常写成 `std::lock` 加多个采用锁标签，步骤容易遗漏；不需要定时接口的读写锁也缺少更直接的类型。
 
 C++17 的 `scoped_lock` 用一个 RAII 对象管理零把、一把或多把互斥量，多锁构造采用死锁避免算法；`shared_mutex` 则提供不带定时操作的共享读、独占写互斥量。二者解决不同问题，可以组合但互不替代。
 
@@ -17,6 +19,21 @@ std::shared_mutex mutex;
 std::shared_lock read_owner(mutex);               // C++17 可使用 CTAD
 std::unique_lock write_owner(mutex);
 ```
+
+## 由一个对象管理多把锁
+
+以下片段只对比写法；完整、可运行的程序见后文。
+
+```text
+// 传统协调方式
+std::lock(first_mutex, second_mutex);
+std::lock_guard<std::mutex> first(first_mutex, std::adopt_lock);
+std::lock_guard<std::mutex> second(second_mutex, std::adopt_lock);
+// C++17：用一个 scoped_lock 完成协调与释放
+std::scoped_lock lock(first_mutex, second_mutex);
+```
+
+两段是替代写法，不能连续对相同互斥量执行。scoped_lock 的多锁构造使用死锁规避算法，析构释放已持锁资源；它不能证明整个程序任意锁顺序都无死锁。只需一把锁时 lock_guard 已足够；需要延迟获取或提前解锁时选择 unique_lock。
 
 ## 第一个完整示例
 
@@ -130,7 +147,7 @@ C++17 `shared_mutex` 提供共享和独占模式但不要求定时接口，相�
 
 ## 内存可见性
 
-释放独占锁 happens-before 随后成功获取同一互斥量的共享或独占锁，因此受保护写入对读者可见。仅把字段声明为 `const` 或只在业务上“读取”不会创建同步关系。
+释放独占锁 happens-before（先发生于关系，用于说明线程间哪些操作的结果必须可见） 随后成功获取同一互斥量的共享或独占锁，因此受保护写入对读者可见。仅把字段声明为 `const` 或只在业务上“读取”不会创建同步关系。
 
 互斥量保护的是访问协议而非某个内存地址的固有属性。所有访问同一非原子状态的线程都必须遵守同一锁约定；某条“只读快速路径”绕过锁仍可与写线程形成数据竞争。
 
@@ -177,6 +194,14 @@ C++17 `shared_mutex` 提供共享和独占模式但不要求定时接口，相�
 - 持锁期间是否调用未知回调、I/O 或等待任务？
 - 所有访问同一非原子状态的线程是否遵守同一锁？
 - 性能测试是否比较普通 mutex 的常数成本？
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp17/concurrency.md
+```
 
 ## 权威资料
 

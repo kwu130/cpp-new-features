@@ -1,12 +1,45 @@
 # Ranges 与 Views
 
+阅读前建议先了解：[迭代器与算法](../prerequisites.md#迭代器与算法)、[Lambda](../cpp11/lambdas.md)、[span](span.md)、[Concepts 入门](concepts.md#先约束一个函数模板)。本篇介绍的新增能力属于 C++20；后续版本差异会另行标注。
+
 ## 学习目标与迭代器对接口的问题
 
 C++17 算法通常要求调用方重复传入 `begin`/`end`，结束位置必须与迭代器采用紧密配套的模型，按成员排序还要手写 Lambda。多步过滤和变换若建立中间容器，会增加分配与复制；不建立容器又常需编写专用迭代器适配器。
 
-C++20 Ranges 用 Concepts 描述范围、迭代器与哨兵能力，算法可直接接收整个范围并支持投影。Views 是通常惰性、轻量的范围适配器，可以用管道组合而不立即生成结果容器。
+C++20 Ranges 让算法可以直接接收整个可遍历对象，而不必反复传 begin/end。View（视图）是可组合的范围表示，过滤和变换视图通常在遍历时才计算；管道符 | 用来把这些操作按顺序连接。Concepts 在接口处检查所需能力，结束标记与投影的细节放到示例之后。
 
-读完后，你应能区分 Range、View、容器和 borrowed range，判断源对象生命周期与迭代器失效，理解惰性求值成本，并选择传统算法或 Ranges 算法。
+先学会遍历、过滤与变换，再区分容器是否拥有数据、视图何时失效。后半篇解释 borrowed_range（范围对象销毁本身不会让其迭代器悬空）等进阶契约。
+
+## 先比较普通循环与视图管道
+
+先做一件具体的事：保留偶数并平方。传统循环直接把结果保存到 vector，视图管道描述同一计算，真正遍历时才求值；需要保存时再显式收集。
+
+```cpp example id="cpp20-ranges-loop-comparison" std="c++20" file="main.cpp" kind="single" compilers="all" output="old=4 16, ranges=4 16"
+#include <cassert>
+#include <iostream>
+#include <ranges>
+#include <vector>
+
+int main() {
+    const std::vector<int> values{1, 2, 3, 4};
+    std::vector<int> old_result;
+    for (int value : values) {
+        if (value % 2 == 0) old_result.push_back(value * value);
+    }
+
+    auto squares = values
+        | std::views::filter([](int value) { return value % 2 == 0; })
+        | std::views::transform([](int value) { return value * value; });
+    std::vector<int> new_result;
+    for (int value : squares) new_result.push_back(value);
+
+    assert(old_result == new_result);
+    std::cout << "old=" << old_result[0] << ' ' << old_result[1]
+              << ", ranges=" << new_result[0] << ' ' << new_result[1] << '\n';
+}
+```
+
+两份保存后的结果相同。建立 squares 时不会生成结果容器；读取时才筛选并变换。这里为了比较仍保存了两份结果，不能声称整个程序零分配。源 values 在整个遍历期间存活，Lambda 不捕获短寿命引用。多步筛选、变换与早停适合管道；一段简单循环或必须长期保存的结果不必强行改用 View。
 
 ## 最小语法
 
@@ -20,7 +53,7 @@ auto pipeline = values
     | std::views::take(10);
 ```
 
-## 第一个完整示例
+## 实际示例：只遍历一次的过滤与变换
 
 示例建立一个观察 `values` 的惰性管道。过滤与平方操作直到范围被 `for` 遍历时才对相应元素执行。
 
@@ -46,9 +79,9 @@ int main() {
 
 程序输出 `4 16`。奇数在过滤阶段被跳过，变换只对留下的 `2` 和 `4` 求平方。View 通常不拥有底层数据，必须保证源范围生命周期足够长；需要稳定结果或多次遍历时应考虑物化到容器。
 
-## Range、迭代器和哨兵
+## 进一步理解：Range、迭代器和哨兵
 
-Ranges 把“可以取得 begin/end”建模为 Concept。结束哨兵不必与迭代器同类型，这让以零字符、长度条件或无限序列结束的范围更自然。算法通过 Concept 明确要求输入范围、前向范围、随机访问范围等能力。
+Ranges 把“可以取得 begin/end”建模为 Concept。结束哨兵（sentinel，用来判断是否到达终点的对象）不必与迭代器同类型，这让以零字符、长度条件或无限序列结束的范围更自然。算法通过 Concept 明确要求输入范围、前向范围、随机访问范围等能力。
 
 Ranges 算法通常返回带信息的结果类型或安全迭代器，并使用投影参数从元素中选取比较字段。它们仍是编译期泛型算法，不建立运行期集合层次。
 
@@ -98,7 +131,7 @@ int main() {
 
 `&Player::score` 是投影，默认关系只比较投影后的整数。算法仍重排完整 `Player` 对象。若投影返回悬空引用、修改元素或不稳定地产生不同结果，排序所要求的关系性质会被破坏。
 
-Ranges 算法通常不依赖 ADL 找到同名用户算法；它们以定制点对象形式暴露，减少某些重载意外。调用失败时，Concept 诊断会指出迭代器、可排序性或投影关系中不满足的部分。
+Ranges 算法通常不依赖 ADL（实参依赖查找，从实参类型关联的命名空间中寻找候选） 找到同名用户算法；它们以定制点对象（具有统一调用入口、按规定寻找实现的对象）形式暴露，减少某些重载意外。调用失败时，Concept 诊断会指出迭代器、可排序性或投影关系中不满足的部分。
 
 ### 定制点对象的查找顺序
 
@@ -114,9 +147,19 @@ Ranges 算法通常不依赖 ADL 找到同名用户算法；它们以定制点�
 
 惰性带来零中间分配和早停优势，也意味着副作用函数可能被多次调用，调试时看到的元素并未缓存。某些 View 只满足单遍输入范围，重复遍历不是合法假设。
 
-View 是满足 `range` 且可廉价移动、复制/销毁等特定要求的范围类型，重点是对元素序列的轻量表示。它不等同于“永远非拥有”：`owning_view` 可以拥有被适配的右值范围；但过滤、转换等适配器通常只组合底层 View 和函数对象，不物化元素。
+View 满足 range、movable 与 enable_view 等要求。C++20 的 View 不要求可复制，P2325R3 缺陷修正进一步移除了默认构造要求；其移动构造要求常数时间，移动赋值与析构的复杂度有各自的语义约束，不能简化成“所有操作都 O(1)”。视图是范围的可组合表示，不等同于永远非拥有。
+
+C++20 发布初版没有 owning_view；P2415R2 作为针对 C++20 的缺陷修正加入拥有包装并扩展可适配的右值范围。已实现该修正的库可以拥有被适配的右值容器，早期库则可能拒绝相同写法。本篇入门示例只适配左值容器，不依赖这项修正。
 
 `views::all` 是把输入规范化为 View 的核心适配：左值范围通常包装成 `ref_view`，已有 View 按值使用，合适的右值范围可进入拥有包装。管道 `range | adaptor(args...)` 本质上调用范围适配器闭包，闭包可以继续组合。
+
+### C++20 初版与缺陷修正
+
+- [P2325R3](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2325r3.html)：移除 View 的默认构造要求，并调整相关适配器契约；可复制性本来就不是所有 View 的要求。
+- [P2415R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2415r2.html)：补充 owning_view，让合适的非 View 右值范围可以被拥有。
+- split_view 的接口经历 [P2210R2](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2021/p2210r2.html) 缺陷修正；现代库中的 lazy_split_view 延续原先偏惰性的设计，不能把两个名字都写成 C++20 发布初版已有。
+
+这些修正常回溯用于 C++20 模式，但 -std=c++20 本身不保证某个标准库已经实现；核对库版本并实际编译所需组合。
 
 ### 常用适配器
 
@@ -152,7 +195,7 @@ View 与 borrowed range 是正交概念。某个 View 可能拥有底层范围�
 
 ## 迭代器失效与 const
 
-View 不能提升底层范围的稳定性。`vector` 重分配后，引用它的 `ref_view` 及派生过滤/转换链中的迭代状态同样失效。修改元素导致过滤谓词结果变化时，已有迭代器的后续行为还要满足相应 View 前置条件。
+View 不能提升底层元素的稳定性。`vector` 重分配会使已取得的元素引用与迭代器失效，过滤视图缓存的匹配位置也可能失效。`ref_view` 本身仍引用原 vector 对象，重新取得新迭代器和继续使用旧迭代器是两件事；缓存过位置的派生视图不能因此假定自动恢复。修改元素导致过滤谓词结果变化时，已有迭代器的后续行为还要满足相应 View 前置条件。
 
 一个 View 对象是否能作为 `const` 范围遍历取决于其底层范围和适配器。谓词可能不是 const-callable，缓存也可能限制 const `begin()`。不要因为“View 是只读窗口”就假定 `const auto pipeline` 一定可遍历。
 
@@ -218,6 +261,14 @@ Range-for 与管道天然配合，因为语言会分别获取 begin/end。算法
 - 元素修改未落到底层：transform 可能按值返回而非引用。
 - 运行变慢：检查 filter 重复扫描、transform 重算和大型闭包捕获。
 - 偶发悬空：从最外 View 逐层追踪到最终 owning/`ref_view` 与所有者。
+
+## 运行本篇示例
+
+源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
+
+```shell
+python3 tools/verify_examples.py --compiler clang++ --path docs/cpp20/ranges.md
+```
 
 ## 权威资料
 
