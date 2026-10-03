@@ -215,12 +215,45 @@ def supports_feature(compiler: str, standard: str, requirement: str) -> bool:
         return "CPP_DOC_FEATURE_AVAILABLE" in result.stdout.splitlines()
 
 
+@lru_cache(maxsize=None)
+def stacktrace_link_flags(compiler: str, standard: str) -> tuple[str, ...]:
+    """Resolve libstdc++'s separate stacktrace runtime, also when using Clang."""
+    with tempfile.TemporaryDirectory(prefix="cpp-doc-stacktrace-") as directory:
+        work = Path(directory)
+        probe = work / "library.cpp"
+        probe.write_text(
+            "#include <version>\n#ifdef __GLIBCXX__\nCPP_DOC_LIBSTDCXX\n#endif\n",
+            encoding="utf-8",
+        )
+        result = run_command([compiler, f"-std={standard}", "-E", "-P", str(probe)], work)
+        if result.returncode != 0:
+            raise VerificationError(f"standard library probe failed:\n{result.stdout}{result.stderr}")
+        if "CPP_DOC_LIBSTDCXX" not in result.stdout.splitlines():
+            return ()
+        # GCC 14+ uses stdc++exp; older GCC 13 installations use libbacktrace.
+        for library in ("libstdc++exp.a", "libstdc++_libbacktrace.a"):
+            result = run_command([compiler, f"-print-file-name={library}"], work)
+            if result.returncode != 0:
+                raise VerificationError(f"stacktrace library lookup failed:\n{result.stdout}{result.stderr}")
+            path = Path(result.stdout.strip())
+            if path.is_absolute() and path.is_file():
+                return (str(path),)
+        raise VerificationError(
+            f"{compiler}: libstdc++ advertises stacktrace but its support library was not found; "
+            "install the matching libstdc++ development package "
+            "(libstdc++exp.a or libstdc++_libbacktrace.a)"
+        )
+
+
 def verify_one(example: Example, compiler: str) -> str:
     family = compiler_family(compiler)
     if example.compilers not in {"all", family}:
         return "skipped"
     if example.requires is not None and not supports_feature(compiler, example.standard, example.requires):
         return f"skipped (requires {example.requires})"
+    link_flags = ()
+    if example.requires is not None and example.requires.startswith("__cpp_lib_stacktrace>="):
+        link_flags = stacktrace_link_flags(compiler, example.standard)
     with tempfile.TemporaryDirectory(prefix=f"cpp-doc-{example.identifier}-") as directory:
         work = Path(directory)
         for filename, content in example.files.items():
@@ -232,7 +265,7 @@ def verify_one(example: Example, compiler: str) -> str:
         if example.kind == "single":
             if set(example.files) != {"main.cpp"}:
                 raise VerificationError(f"{example.source}:{example.line}: single example must contain main.cpp only")
-            command = common + ["main.cpp", "-pthread", "-o", str(executable)]
+            command = common + ["main.cpp", "-pthread", *link_flags, "-o", str(executable)]
             result = run_command(command, work)
         elif example.kind == "modules":
             if family != "gcc":

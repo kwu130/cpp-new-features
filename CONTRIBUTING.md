@@ -47,6 +47,7 @@
 - `std` 只能是 `c++11`、`c++14`、`c++17`、`c++20` 或 `c++23`。
 - `compilers="all"` 表示同时面向 GCC 与 Clang，能力满足时都必须通过；缺少声明能力时须如实记录跳过。工具链敏感示例可以指定 `gcc`。
 - 支持尚不普遍的能力可以声明 `requires="__cpp_lib_expected>=202202"`，只允许一个标准特性测试宏的最低值比较。验证器在对应标准模式下包含 `<version>` 探测；不满足时明确跳过，不能计作通过。门槛须对应示例实际使用的接口：expected 基础为 202202，串联操作为 202211。不能为绕过真实编译错误随意添加要求，或用 fallback 替换要验证的特性。
+- `__cpp_lib_stacktrace` 满足后，验证器还会识别实际标准库；使用 libstdc++ 时查找并链接其栈回溯支持库。Clang 也可能使用 libstdc++，不能按编译器名称直接跳过链接依赖；库缺失仍应报错。
 - `output` 可选；存在时会与删除末尾换行后的标准输出严格比较。
 - 示例必须返回 0，并在十秒内结束。
 - 继续将完整源码保存在 Markdown 中，不维护重复的独立源码副本。每篇专题给出从仓库根目录运行的 `--path` 命令；版本入口解释如何运行整个版本。
@@ -56,6 +57,7 @@
 提交前运行：
 
 ```shell
+python3 -m unittest discover -s tools -p 'test_*.py'
 python3 tools/verify_examples.py --compiler clang++
 python3 tools/verify_examples.py --compiler g++
 ```

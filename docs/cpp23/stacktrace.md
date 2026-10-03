@@ -19,8 +19,7 @@ int main() {
     for (const auto& entry : trace) {
         static_cast<void>(entry.description());
     }
-    std::cout << "capture complete
-";
+    std::cout << "capture complete\n";
 }
 ```
 
@@ -38,7 +37,9 @@ source_location 成本通常更小且位置由 API 传递，stacktrace 关注多
 
 捕获与符号解析可能需要分配及平台支持，存在明显诊断开销。current() 的捕获接口有不抛保证，但资源不足可能得到空快照；描述转换、字符串生成等后续处理仍需按接口考虑异常与分配。
 
-头文件和宏可用仍不保证链接环境已经完整。某些 libstdc++ 版本需要额外的栈回溯支持库，具体链接参数应按编译器官方文档与已安装库确定。本仓库保持通用验证命令，不猜测所有平台都需要同一个额外库；宏满足却链接失败会报告失败。
+头文件和宏可用仍不保证链接环境已经完整。使用 libstdc++ 时，GCC 14 起需要链接 `libstdc++exp.a`（通常写作 `-lstdc++exp`）；较早的 GCC 13 使用 `libstdc++_libbacktrace.a`。Clang 在 Linux 上也可能使用 libstdc++，所以不能只根据编译器名称决定链接参数。版本差异见 [GCC 14 官方说明](https://gcc.gnu.org/gcc-14/changes.html)。
+
+验证器先检查特性宏，再识别实际标准库。对 libstdc++，它通过编译器的 `-print-file-name` 查找上述支持库，并把已找到的库加在源码之后参与链接；其他标准库不添加 GNU 专用库。宏满足但支持库缺失、编译或链接失败，都会报告失败，不会计作跳过。
 
 不能假定接口适合信号处理器或崩溃后任意状态下调用。线上栈信息可能包含路径和实现细节，输出策略应服从应用的日志边界；本教程不添加环境相关日志。
 
