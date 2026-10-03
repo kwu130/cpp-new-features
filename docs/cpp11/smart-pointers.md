@@ -198,6 +198,23 @@ int main() {
 - 图结构中某些节点确实由多个根共同拥有。
 - 缓存把对象交给外部使用，而缓存可以提前移除自己的引用。
 
+### 先看两个所有者的寿命
+
+复制 `shared_ptr` 让另一个句柄也能保持对象存活，不会复制被管理对象。下面释放第一个句柄后，第二个仍可访问同一个整数。
+
+```cpp example id="cpp11-shared-ptr-basic" std="c++11" file="main.cpp" kind="single" compilers="all" output="value=7, owners=1"
+#include <iostream>
+#include <memory>
+int main() {
+    auto first = std::make_shared<int>(7);
+    auto second = first;
+    first.reset();
+    std::cout << "value=" << *second << ", owners=" << second.use_count() << '\n';
+} // 最后一个所有者 second 析构，整数也随之销毁
+```
+
+这里的 `reset()` 只放弃 first 的所有权，不代表立即销毁整数。`use_count()` 在这个单线程例子中用于观察；实际并发代码不能把计数当作同步工具。下一节再解释记录所有者的“控制块”。
+
 ### 对象指针与控制块
 
 典型 `shared_ptr` 对象保存两个指针：一个是对外解引用的对象指针，另一个指向控制块。控制块通常包含：
@@ -289,6 +306,28 @@ C++20 提供 `atomic<shared_ptr<T>>` 专门支持共享指针变量的原子发�
 
 - 打破双向关系或图结构中的强所有权环。
 - 在不知道对象是否仍存在时保存可检查观察者。
+
+### 先看对象消失前后
+
+`weak_ptr` 不延长对象寿命。需要使用对象时，调用 `lock()` 尝试取得一个临时的 `shared_ptr`；成功后，这个 shared_ptr 才负责在使用期间保持对象存活。
+
+```cpp example id="cpp11-weak-ptr-basic" std="c++11" file="main.cpp" kind="single" compilers="all" output="alive=7, expired=true"
+#include <iostream>
+#include <memory>
+int main() {
+    std::weak_ptr<int> observer;
+    {
+        auto owner = std::make_shared<int>(7);
+        observer = owner;
+        if (auto current = observer.lock()) {
+            std::cout << "alive=" << *current;
+        }
+    } // current 和 owner 都已销毁，整数不再存在
+    std::cout << ", expired=" << std::boolalpha << !observer.lock() << '\n';
+}
+```
+
+输出的前半段表明对象仍在，后半段表明 `lock()` 已返回空指针。不要先检查 `expired()` 就假定下一步仍能使用对象；直接检查 `lock()` 的返回结果。
 
 ### 常用接口
 
@@ -440,18 +479,6 @@ use_count() 是观察用的快照，不能证明并发独占。边界处明确�
 
 可在测试对象的构造、析构中维护计数，并结合 AddressSanitizer、LeakSanitizer 和 ThreadSanitizer 检查重复释放、泄漏与数据竞争。
 
-## 最终选择流程
-
-1. 资源是否需要动态生命周期？若不需要，优先普通局部对象。
-2. 是否存在唯一、明确的所有者？若是，使用 `unique_ptr`。
-3. 其他代码是否只需要调用期间访问？传引用或观察指针。
-4. 是否确实有多个独立参与者共同保持生命周期？才使用 `shared_ptr`。
-5. 共享关系中是否存在回指或缓存观察？使用 `weak_ptr` 表达非拥有边。
-6. 是否跨线程？分别设计句柄发布同步和对象内部同步。
-7. 是否使用特殊资源？为创建方式配对正确删除器。
-
-智能指针的最佳实践不是“把所有裸指针替换掉”，而是让所有权边界能够从类型和接口直接读出来。
-
 ## 三类智能指针接口对照
 
 | 接口/性质 | `unique_ptr` | `shared_ptr` | `weak_ptr` |
@@ -468,19 +495,6 @@ use_count() 是观察用的快照，不能证明并发独占。边界处明确�
 | 数组支持 | `unique_ptr<T[]>` | C++11 `shared_ptr` 数组接口需谨慎核对版本 | 跟随对应 shared 所有权 |
 | 循环引用 | 不会形成共享环 | 可能泄漏 | 用于打断 shared 环 |
 | 典型工厂 | `unique_ptr(new T)` / C++14 `make_unique` | `make_shared<T>` | 从 `shared_ptr` 构造 |
-
-## 智能指针专项审查
-
-- 所有权是唯一、共享还是只观察，类型是否准确表达？
-- `unique_ptr` 自定义删除器是否匹配资源获取方式？
-- 是否在 release 后立即把裸资源交给新 RAII（把资源释放绑定到管理对象的析构） 所有者？
-- `shared_ptr` 是否从同一裸指针创建了两个控制块？
-- `make_shared` 的对象与控制块共同分配寿命是否可接受？
-- `shared_ptr` 别名构造是否保持正确所有者但指向子对象？
-- `enable_shared_from_this` 是否只在对象已有 shared 控制块后调用？
-- 回调/父子图是否因 `shared_ptr` 环永不释放？
-- `weak_ptr`::lock 失败是否作为正常竞态处理？
-- `use_count` 是否仅用于观察而非线程同步决策？
 
 ## 智能指针故障定位线索
 

@@ -71,7 +71,7 @@ int main() {
 }
 ```
 
-程序输出 `medium`。`answer` 的类型由 `21` 推导为 `int`；`classify` 的返回值被实际检查；`fallthrough` 明确表示从 `case 2` 继续执行 `default` 不是遗漏 `break`。属性主要表达意图和触发诊断，非类型模板参数则仍受 C++17 允许类型范围约束。
+程序输出 `medium`。模板实参 `21` 的类型推导为 `int`；`answer` 声明为 constexpr 变量，因此其类型为 `const int`；`classify` 的返回值被实际检查；`fallthrough` 明确表示从 `case 2` 继续执行 `default` 不是遗漏 `break`。属性主要表达意图和触发诊断，非类型模板参数则仍受 C++17 允许类型范围约束。
 
 ## `auto` 非类型模板参数
 

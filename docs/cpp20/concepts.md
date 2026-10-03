@@ -42,7 +42,11 @@ twice(1.5); // double 不满足 integral：没有可用的 twice 候选
 
 适合在泛型库与可复用接口中声明必要能力；只有一两个固定类型的业务函数可以直接写普通重载。Concept 不能静态验证排序关系、结合律等所有语义性质。
 
-## 最小语法
+## 再读自定义约束的语法
+
+下面的 `Addable` 表达两个要求：`left + right` 必须合法，且结果的类型必须恰好是 T。`requires(T left, T right)` 中的名字用于检查表达式，并不真正创建对象或执行加法；箭头后的 `std::same_as<T>` 检查结果类型。
+
+`template <Addable T>` 和下面的 `requires Addable<T>` 是两种施加这个条件的写法，按需要选一种即可。
 
 ```text
 template <typename T>

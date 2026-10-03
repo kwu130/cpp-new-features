@@ -8,7 +8,32 @@
 
 C++23 的 expected<T, E> 在同一个对象里保存成功值 T 或错误 E。它不是异步 Future，也不会自动记录日志或强迫调用方检查。
 
-## 最小示例：从文本读取整数
+## 最小示例：成功返回值，失败返回原因
+
+先不引入文本解析。下面只允许偶数对半分；遇到奇数就返回原因。
+
+```cpp example id="cpp23-expected-result-error" std="c++23" file="main.cpp" kind="single" compilers="all" output="value=4, error=odd number" requires="__cpp_lib_expected>=202202"
+#include <expected>
+#include <iostream>
+#include <string>
+std::expected<int, std::string> half(int value) {
+    if (value % 2 != 0) return std::unexpected(std::string("odd number"));
+    return value / 2;
+}
+int main() {
+    const auto good = half(8);
+    const auto bad = half(7);
+    if (good && !bad) {
+        std::cout << "value=" << *good << ", error=" << bad.error() << '\n';
+    }
+}
+```
+
+沿着调用看三步：`half(8)` 返回整数 4，保存为成功值；`half(7)` 返回 `unexpected` 包装的字符串，保存为错误；调用方先检查状态，再分别用 `*good` 和 `bad.error()` 取出对应内容。
+
+`expected<int, std::string>` 中 int 是成功类型，string 是错误类型。`unexpected` 是选择错误分支的标记，并不表示抛出了异常。只用 `optional<int>` 可以表示失败，却无法传回这里的错误文字。
+
+## 实际应用：从文本读取整数
 
 传统接口可写 `bool parse(text, value, error)`。下面把两种结果一起返回，成功和错误路径都可以直接观察：
 

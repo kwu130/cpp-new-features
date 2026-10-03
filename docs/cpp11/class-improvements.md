@@ -32,7 +32,29 @@ void run() override;
 
 delete 在使用处给出诊断，override 能发现拼写、参数或限定符不匹配；它们不替你设计所有权。资源或身份对象常需限制复制，多态接口常需 override；普通值类型可以保留编译器生成的成员。下面的综合程序逐项使用这些声明。
 
-## 第一个完整示例
+## 先单独看 override：让拼错的重写被发现
+
+假设基类要求 `name() const`。派生类如果漏写 const，传统写法可能只是新声明了另一个函数，调用基类接口时仍执行基类版本。`override` 要求编译器检查“这确实是重写”。
+
+```cpp example id="cpp11-override-basic" std="c++11" file="main.cpp" kind="single" compilers="all" output="worker"
+#include <iostream>
+struct Entity {
+    virtual const char* name() const { return "entity"; }
+    virtual ~Entity() = default;
+};
+struct Worker : Entity {
+    const char* name() const override { return "worker"; }
+};
+int main() {
+    Worker worker;
+    const Entity& entity = worker;
+    std::cout << entity.name() << '\n';
+}
+```
+
+通过基类引用调用仍输出 worker，这是已有的虚函数行为；新增的 override 提供编译期检查。如果把派生类的 const 删掉却保留 override，编译器就会拒绝。`= default` 在这里要求编译器生成析构函数，其详细规则见后文。
+
+## 组合练习：表达完整的类设计意图
 
 示例组合展示强类型枚举、虚析构、默认析构、继承构造、禁止复制以及重写检查。
 

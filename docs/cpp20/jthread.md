@@ -2,61 +2,34 @@
 
 阅读前建议先了解：[C++11 线程与锁](../cpp11/concurrency.md)、[所有权与 RAII](../prerequisites.md#所有权与-raii)。本篇介绍的新增能力属于 C++20；后续版本差异会另行标注。
 
-## 学习目标与线程析构问题
 
-C++11 `std::thread` 在仍可连接时析构会调用 `terminate`，因此每条正常与异常路径都必须显式 `join` 或 `detach`。即使正确连接，标准线程也没有统一的取消状态，项目常用各自原子标志和唤醒协议。
+## 线程结束了，对象也要正确收尾
 
-C++20 `std::jthread` 把自动连接纳入 RAII（把资源释放绑定到管理对象的析构），并与 `stop_source`、`stop_token`、`stop_callback` 共享协作停止模型。停止请求只是线程安全信号，不会强制终止线程或自动中断任意阻塞调用。
+使用 `std::thread` 时，即使工作已经做完，只要还没有 join 或 detach，就不能让线程对象直接析构，否则会调用 `std::terminate`。尤其函数中途 return 或抛异常时，手工回收容易遗漏。
 
-读完后，你应能安排 jthread 的析构与被引用对象寿命，设计安全停止点和可取消等待，理解回调并发语义，并避免持锁等待、成员析构顺序和分离线程陷阱。
+C++20 的 `std::jthread` 可以在析构时等待线程结束，让局部对象承担回收责任。它还提供协作停止：发出请求，由工作代码决定何时退出。先看自动等待，后面再学停止令牌和回调。
 
-## 最小接口
-
-```text
-std::jthread worker([](std::stop_token token) {
-    while (!token.stop_requested()) { /* 完成一个可中断工作单元 */ }
-});
-
-worker.request_stop(); // 幂等请求
-worker.join();         // 等待结束；析构时也会按规则请求并连接
-```
-
-## 把线程回收交给对象
-
-以下片段只对比写法；完整、可运行的程序见后文。
-
-```text
-// 传统 thread 的每条路径都需要安排 join/detach
-std::thread worker(do_work);
-worker.join();
-// C++20：可连接的 jthread 析构时请求停止并 join
-std::jthread worker(do_work);
-```
-
-两者是替代写法，不能重复声明 worker。jthread 适合作用域拥有的工作线程，减少遗漏回收；析构可能阻塞，停止请求也不会强制打断 do_work。要求任务长期独立运行或严格非阻塞析构时，必须另行设计所有权与取消协议。
+传统代码常写 `std::thread worker(do_work); worker.join();`。若线程的寿命应由当前作用域管理，可以使用 jthread。析构仍可能等待很久，因此自动回收并不意味着任务自动具备超时或取消能力。
 
 ## 第一个完整示例
 
-线程入口首参数接受令牌，因此 jthread 自动注入自己的停止状态。主线程显式连接后才读取普通整数 `result`。
+先只观察自动等待：thread 通常要自己写 worker.join()，jthread 可以在作用域结束时负责等待。这里暂不使用停止令牌。
 
 ```cpp example id="cpp20-jthread" std="c++20" file="main.cpp" kind="single" compilers="all" output="42"
 #include <iostream>
-#include <stop_token>
 #include <thread>
-
 int main() {
     int result = 0;
-    std::jthread worker([&result](std::stop_token token) {
-        if (!token.stop_requested()) {
-            result = 42;
-        }
-    });
-    worker.join();
+    {
+        std::jthread worker([&result] { result = 42; });
+    } // worker 析构时等待线程结束
     std::cout << result << '\n';
 }
 ```
 
-程序输出 `42`。工作线程观察到尚未请求停止并写入结果，`join` 建立线程完成与后续读取之间的同步。自动连接改善异常安全，但持锁析构 jthread 仍可能造成死锁。
+程序输出 `42`。先声明 result，再进入管理 worker 的内层作用域；离开内层作用域后，线程已结束，主线程才读取 result。析构时实际会先请求停止再 join；这个 Lambda 不接收停止令牌，仍正常完成赋值。
+
+停止请求不是强制杀死线程。若把“是否写入 42”设为取决于 stop_requested()，自动析构可能先发出停止请求，结果就不再保证是 42。需要协作取消时，另外设计“收到请求后在哪一步退出”，不要把正常结果与线程调度顺序混在一起。
 
 ## RAII 线程所有权
 
@@ -168,7 +141,7 @@ int main() {
 
 ## 示例解析与工程策略
 
-示例线程启动时令牌尚未请求停止，因此写入结果，主线程显式 join 后读取，建立可见性。真实任务应测试启动前取消、运行中取消、完成后请求、回调异常策略和析构阻塞上限，并让停止结果区别于业务失败。
+第一个示例通过内层作用域结束触发自动 join，随后才读取结果，没有采用停止令牌。真实任务若支持取消，还应覆盖启动前请求、运行中请求和完成后请求，明确部分结果如何处理；收到请求并不等于任务已经退出。
 
 ## 线程停止接口速查
 

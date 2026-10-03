@@ -13,7 +13,29 @@ int& get() & { return value; }
 const int& get() const & { return value; }
 ```
 
-## 最小示例：同一个成员实现，两种引用
+## 先认识语法：给调用对象起一个名字
+
+普通成员函数中的 `this` 隐式指向调用对象。下面先把对象写成显式的只读引用参数，观察调用方式：
+
+```cpp example id="cpp23-explicit-object-basic" std="c++23" file="main.cpp" kind="single" compilers="all" output="value=3" requires="__cpp_explicit_this_parameter>=202110"
+#include <iostream>
+struct Box {
+    int value = 3;
+    int get(this const Box& self) {
+        return self.value;
+    }
+};
+int main() {
+    const Box box;
+    std::cout << "value=" << box.get() << '\n';
+}
+```
+
+`this const Box& self` 表示“将调用对象作为名为 self 的只读引用”。调用仍写 `box.get()`，不手动传 box；函数体用 `self.value` 访问成员。本例按值返回 int，与普通 `int get() const` 的读取行为相同，还没有用到模板推导。
+
+接下来才让 `self` 的类型由编译器推导，从而减少重复重载。
+
+## 进一步使用：同一个成员实现，两种引用
 
 ```cpp example id="cpp23-explicit-object" std="c++23" file="main.cpp" kind="single" compilers="all" output="value=7" requires="__cpp_explicit_this_parameter>=202110"
 #include <iostream>

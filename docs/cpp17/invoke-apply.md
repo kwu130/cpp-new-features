@@ -2,38 +2,48 @@
 
 阅读前建议先了解：[Lambda](../cpp11/lambdas.md)、[tuple](../cpp11/functional-tools.md#先分别使用-tuple-与类型萃取)、[参数包](../cpp11/templates.md)。本篇介绍的新增能力属于 C++17；后续版本差异会另行标注。
 
-## 学习目标与泛型调用样板
+## 两个不同的问题
 
-C++14 中，泛型适配器要统一处理普通函数、函数对象和成员指针，必须按可调用对象类别选择不同语法；把一个 `tuple` 的元素变成位置实参，还需手写 `index_sequence` 展开。业务代码因此容易重复标准调用规则。
+你可能遇到两种调用需求：参数已经存进 tuple，想把它们交给函数；或者正在写通用包装器，需要同时支持普通函数与成员函数指针。C++17 分别提供 `apply` 和 `invoke`，不要求一起使用。
 
-C++17 的 `std::invoke` 统一可调用协议，`std::apply` 则把 tuple-like 对象展开后执行一次调用。它们主要服务泛型基础设施；签名固定且直接可调用的普通代码仍应保持简单。
+## apply：把 tuple 拆成函数实参
 
-读完后，你应能调用成员函数和成员数据指针，理解 `apply` 的索引展开模型，并用 `is_invocable`、`invoke_result` 与条件 `noexcept` 描述适配器能力。
+两个元素时可以手写 `multiply(std::get<0>(args), std::get<1>(args))`。`apply` 替你展开全部元素：
 
-## 最小接口
-
-```text
-std::invoke(callable, arguments...);
-std::invoke(member_pointer, object, arguments...);
-std::apply(callable, tuple_like_arguments);
+```cpp example id="cpp17-apply-basic" std="c++17" file="main.cpp" kind="single" compilers="all" output="42"
+#include <iostream>
+#include <tuple>
+int multiply(int left, int right) { return left * right; }
+int main() {
+    const auto arguments = std::make_tuple(6, 7);
+    std::cout << std::apply(multiply, arguments) << '\n';
+}
 ```
 
-## 统一调用与展开元组是两件事
+本例相当于执行 `multiply(6, 7)`，所以输出 42。它只调用函数一次，不是依次给每个元素调用函数。适合参数打包后再执行的任务；已有两个普通变量时直接调用即可。
 
-以下片段只对比写法；完整、可运行的程序见后文。
+## invoke：统一普通调用和成员指针调用
 
-```text
-// 普通函数可直接调用
-function(a, b);
-// invoke 统一处理函数对象、函数指针与成员指针
-std::invoke(callable, a, b);
-// apply 把 tuple 元素当作函数实参
-std::apply(function, arguments);
+普通函数写 `f(x)`，成员函数指针则需要 `(object.*member)(x)` 等语法。通用包装器若想接受两者，可以让 `invoke` 选择相应规则。
+
+```cpp example id="cpp17-invoke-basic" std="c++17" file="main.cpp" kind="single" compilers="all" output="42"
+#include <functional>
+#include <iostream>
+struct Calculator {
+    int multiply(int left, int right) const { return left * right; }
+};
+int main() {
+    const Calculator calculator;
+    const auto operation = &Calculator::multiply;
+    std::cout << std::invoke(operation, calculator, 6, 7) << '\n';
+}
 ```
 
-invoke 适合泛型适配器需要接受不同可调用形式的情况，普通函数调用无需机械包装。apply 省去手写索引序列来展开 tuple；它不会替你管理 tuple 中引用的寿命。下面的完整程序再组合成员访问和元组展开。
+`operation` 指定要调用哪个成员，`calculator` 指定在哪个对象上调用。本例等价于 `calculator.multiply(6, 7)`。已知对象和成员时，直接写后者更清楚；需要把“操作”作为参数传递时，统一调用才有价值。
 
-## 第一个完整示例
+后面的组合练习可以用来检查自己能否分别指出两种工具的职责。可调用性萃取、返回引用和自定义类型限制放在后半篇阅读。
+
+## 组合练习：展开参数后调用成员函数
 
 外层 `apply` 把元组中的 `6` 和 `7` 传给 Lambda，内层 `invoke` 再按成员函数指针规则调用 `Calculator::multiply`。
 
@@ -102,7 +112,7 @@ int main() {
 
 ## `apply` 的展开机制
 
-`apply(function, tuple)` 概念上生成 `0..N-1` 的索引序列，再调用 `invoke(function, get<I>(tuple)...)`。因此它不仅支持 `tuple`，也支持满足 tuple 协议的 `pair`、`array` 和用户类型。
+`apply(function, tuple)` 概念上生成 `0..N-1` 的索引序列，再调用 `invoke(function, get<I>(tuple)...)`。C++17 中可使用标准库的 `tuple`、`pair` 和 `array`；不能仅凭用户类型支持结构化绑定，就假定它也能用于 `std::apply`。
 
 元组的值类别会传播给元素：传右值元组可能把元素作为右值交给函数。透明适配器应正确转发元组，否则会发生额外复制或无法调用只移动参数。
 
@@ -114,7 +124,7 @@ int main() {
 
 ### tuple-like 定制边界
 
-在 C++17 中，标准设施明确支持标准 tuple-like 类型；让用户类型参与相关协议通常涉及 `tuple_size`、`tuple_element` 与 `get<I>` 的一致定义。错误地只提供长度而缺少某个索引访问，会在模板实例化深处产生诊断。每个索引的元素类型、const 传播和值类别应互相一致，不能让 `tuple_element_t<I, T>` 宣称一种类型而 `get<I>` 返回不相容引用。
+C++17 的 `apply` 展开使用标准库的 `get` 访问元素。为用户类型定义 `tuple_size`、`tuple_element` 和通过 ADL 找到的 `get`，可以支持结构化绑定，却不能据此保证支持 `std::apply`。需要自定义扩展时，应提供自己的展开适配器，或先转换为标准 tuple；不要向 `std` 添加任意函数重载。
 
 空元组同样可以用于 `apply`，其效果是无参数调用目标。该边界对通用命令分派很有用，也提醒包装器不能假定参数包至少包含一个元素。
 
@@ -142,10 +152,6 @@ C++17 的 `invoke` 返回类型写作 `invoke_result_t` 所描述的类型，`vo
 
 普通 `f(args...)` 对函数对象已经最清楚。只有代码还要覆盖成员指针等完整 INVOKE 协议，或者需要与标准可调用性萃取保持一致时，`std::invoke` 才体现价值。
 
-## 示例解析与使用边界
-
-示例先由 `apply` 展开二元素元组，Lambda 内再用 `invoke` 调用成员函数指针。真实代码若只调用一个已知成员，直接语法更清楚；这些工具应集中用于任务调度器、反射式字段适配、元组反序列化等真正需要统一调用协议的层。
-
 ## 调用协议速查
 
 | 设施 | 关键语义 |
@@ -161,19 +167,6 @@ C++17 的 `invoke` 返回类型写作 `invoke_result_t` 所描述的类型，`vo
 | 右值 tuple | 元素值类别可转发为右值 |
 | `make_from_tuple<T>` | 展开元素直接构造 T |
 
-## Invoke/apply 专项审查问题
-
-- 成员指针的对象实参是否存活且类型匹配？
-- 传入对象、引用包装器或指针的选择是否保留 const？
-- invoke 返回引用是否被 auto 意外复制？
-- 空函数/成员指针是否可能被实际调用？
-- `is_invocable` 查询的值类别是否与真实 forward 一致？
-- `is_invocable_r` 的“可转换”是否满足精确协议？
-- apply 右值 tuple 是否意外移动了仍需使用的元素？
-- tuple-like 的 size、element、get 是否完全一致？
-- 空 tuple 是否能自然调用零参数目标？
-- 已知普通调用是否无需引入 invoke/apply 增加复杂度？
-
 ## 运行本篇示例
 
 源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
@@ -184,7 +177,7 @@ python3 tools/verify_examples.py --compiler clang++ --path docs/cpp17/invoke-app
 
 ## 权威资料
 
-- [P0209R2：invoke](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2016/p0209r2.html)
+- [C++17 工作草案 N4659：tuple.apply](https://timsong-cpp.github.io/cppwp/n4659/tuple.apply)
 - [工作草案：Function object wrappers](https://eel.is/c++draft/function.objects)
 - [CPP17 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0636r3.html)
 

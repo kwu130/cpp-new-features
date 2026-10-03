@@ -2,37 +2,77 @@
 
 阅读前建议先了解：[Lambda](lambdas.md)、[所有权与 RAII](../prerequisites.md#所有权与-raii)；先学线程与锁，再进入内存序。本篇介绍的新增能力属于 C++11；后续版本差异会另行标注。
 
-## 学习目标与阅读警告
+## 从两个问题开始：谁执行，谁等待
 
-C++11 首次定义统一的线程库和内存模型，使并发正确性不再依赖某个操作系统或“某台机器上碰巧可用”的经验。本文假设读者理解函数对象和 RAII（把资源释放绑定到管理对象的析构），但不要求已有并发经验。
+把计算交给另一个线程后，主线程仍会继续往下执行。因此先解决两个问题：如何等工作完成，如何避免两个线程同时改坏同一份数据。C++11 用 thread 管理线程，用 mutex 保护共享数据；暂时不需要记忆内存序名称。
 
-读完后，你应该能够管理线程生命周期、用互斥量保护不变量、正确等待条件变量、通过 Future/Promise 传递结果，并理解原子操作解决的是哪一层问题。
+C++03 的标准库没有统一线程接口，通常使用操作系统 API。C++11 把线程、锁和任务结果纳入标准库，但不自动让共享对象变得安全。
 
-建议按“线程 → 锁 → 条件变量/任务 → 原子与内存序”阅读。不要从最弱内存序开始学习；先用互斥量和默认顺序得到正确程序，再讨论有证据的优化。
+## 第一步：启动一个线程，等它结束后读结果
 
-## C++03 中的问题
-
-C++03 标准没有线程概念。项目直接调用 pthread、Win32 或其他平台 API，编译器语言模型也没有正式定义线程间的数据竞争和同步关系。同一段代码即使 CPU 指令看似安全，优化器仍可能作出与程序员直觉不同的变换。
-
-C++11 同时加入 `std::thread`、互斥量、条件变量、任务共享状态、原子类型和 happens-before（先发生于关系，用于说明线程间哪些操作的结果必须可见） 规则。库接口与语言内存模型必须一起理解。
-
-## 先管理线程与锁
-
-以下片段只对比写法；完整、可运行的程序见后文。
-
-```text
-// 平台线程 API 的替代入口；需 include <thread>
-std::thread worker(do_work);
-worker.join();
-// 不手工配对 lock()/unlock()；需 include <mutex>
-std::lock_guard<std::mutex> lock(mutex);
+```cpp example id="cpp11-thread-join-basic" std="c++11" file="main.cpp" kind="single" compilers="all" output="result=42"
+#include <iostream>
+#include <thread>
+int main() {
+    int result = 0;
+    std::thread worker([&result] { result = 42; });
+    worker.join();
+    std::cout << "result=" << result << '\n';
+}
 ```
 
-thread 提供标准线程生命周期接口，但仍需确保所有路径正确 join 或 detach；lock_guard 让作用域退出时自动解锁。多项状态需要作为整体保护时先用互斥量，单个原子计数并不能自动保护整个容器。happens-before 和内存序留到正确使用线程与锁之后学习。
+按执行关系读这段程序：启动 worker → worker 写 result → join 等 worker 完成 → 主线程读 result。Lambda 里的 &result 表示访问同一变量。主线程在 join 前不读它，因此没有并发读写冲突；若把输出移到 join 前，就没有这个保证。
 
-## 第一个完整示例
+join 等待完成，不是“开始运行”的按钮。线程从创建成功后就可能开始执行。仍可 join 的 thread 对象析构会终止程序，所以实际业务要照顾异常和提前返回；C++20 的 [jthread](../cpp20/jthread.md)把回收线程放进析构。
 
-工作线程在锁保护下写入共享值，通过 Promise/Future 发布结果；主线程连接工作线程后，再用 `async` 启动一个明确的异步计算。
+## 第二步：两个线程都修改计数时，用同一把锁
+
+只在最后 join，不能保护工作期间的并发 ++counter。一次自增包含读取和写回。没有同步的并发修改会产生数据竞争，属于未定义行为，并非只是可能少加几次；下面用同一把互斥量保护所有修改。
+
+```cpp example id="cpp11-mutex-counter-basic" std="c++11" file="main.cpp" kind="single" compilers="all" output="count=2000"
+#include <iostream>
+#include <mutex>
+#include <thread>
+int main() {
+    int counter = 0;
+    std::mutex mutex;
+    auto increment = [&] {
+        for (int index = 0; index < 1000; ++index) {
+            std::lock_guard<std::mutex> lock(mutex);
+            ++counter;
+        }
+    };
+    std::thread worker(increment);
+    increment();
+    worker.join();
+    std::cout << "count=" << counter << '\n';
+}
+```
+
+lock_guard 构造时加锁，本轮作用域结束时解锁；两个执行者都使用同一 mutex，所以受保护的自增不会同时进行。最后主线程等待 worker 后读取最终值。把 mutex 放到每个线程各自的局部变量里，得到的是不同锁，起不到这里的保护作用。
+
+这个例子为了看清锁的作用而逐次加锁。真实批量统计可以让线程先各自累加，再汇总，减少竞争。多项状态需要一起保持正确时用锁很直接；本篇后半部分再讨论单个原子变量。
+
+## 第三步：只想取得计算结果时，用 Future
+
+Future 可以理解为“稍后领取一次结果的对象”。不必先学 Promise 就能用 async 启动计算，并通过 get() 领取结果或接收异常。
+
+```cpp example id="cpp11-future-result-basic" std="c++11" file="main.cpp" kind="single" compilers="all" output="answer=42"
+#include <future>
+#include <iostream>
+int main() {
+    auto answer = std::async(std::launch::async, [] { return 6 * 7; });
+    std::cout << "answer=" << answer.get() << '\n';
+}
+```
+
+launch::async 在这里明确要求异步执行；get() 等待结果可用，并取走结果，普通 future 不应再次 get()。需要自己决定何时写入结果时，再配合 Promise 使用。Future 传结果，mutex 保护访问，它们解决的问题不同。
+
+第一次阅读掌握这三个程序即可。下面保留组合练习；内存模型、条件变量与内存序属于继续深入的部分。
+
+## 组合练习：结果传递与状态记录
+
+下面的练习把锁、Promise/Future、原子计数和 async 放在一起辨认。这个小任务实际只需前面的 async 即可完成；completed 与锁不是发布这一个结果所必需的，不应把四种工具当成固定搭配。
 
 ```cpp example id="cpp11-concurrency" std="c++11" file="main.cpp" kind="single" compilers="all" output="total=42, doubled=42"
 #include <atomic>
@@ -72,7 +112,7 @@ int main() {
 
 ## C++ 内存模型基础
 
-两个线程并发访问同一内存位置，至少一个是写操作且没有同步，就会形成数据竞争；数据竞争导致未定义行为，而不只是“偶尔读到旧值”。编译器可假设数据竞争不存在，并据此重排或消除访问，所以仅凭 CPU 上看似原子的读写不能保证正确。
+两个线程对同一内存位置有冲突访问（至少一个修改），其中至少一个访问非原子且没有建立先后同步关系，就会形成数据竞争；数据竞争导致未定义行为，而不只是“偶尔读到旧值”。编译器可假设数据竞争不存在，并据此重排或消除访问，所以仅凭 CPU 上看似原子的读写不能保证正确。
 
 同步操作建立 happens-before 关系。解锁同一互斥量 happens-before 随后的成功加锁；线程完成 happens-before `join` 返回；原子的释放写与读取该值的获取读可以发布此前写入的数据。
 
@@ -264,19 +304,6 @@ int main() {
 | `packaged_task` | 把可调用结果连接到 future 共享状态 |
 | `atomic<T>` | 对该对象操作无数据竞争，内存序决定跨对象发布 |
 | `call_once` | 成功完成一次初始化；抛异常时可由后续调用重试 |
-
-## C++11 并发专项审查
-
-- 每个 joinable thread 是否在所有异常路径 join/detach？
-- 数据不变量是否由同一 mutex 保护全部访问？
-- `condition_variable` 是否总用谓词循环处理虚假唤醒？
-- 通知前后的锁策略是否避免丢状态与无谓竞争？
-- promise 是否恰好满足一次并传播异常？
-- future::get 是否被重复调用或越过有效状态？
-- async 是否明确 launch policy 而非依赖实现选择？
-- 原子内存序是否有完整 happens-before 证明？
-- relaxed 原子是否被误用来发布非原子 payload？
-- 锁顺序、回调和 join 是否可能形成环形等待？
 
 ## C++11 并发故障定位线索
 

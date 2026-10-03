@@ -24,7 +24,24 @@ return_object ──拥有/引用──> coroutine_handle ──指向──> co
 
 传统函数调用会连续执行到 return，再交还控制权。若要手工分成两次调用，通常要用一个对象记录当前阶段；协程让编译器保存这个阶段及跨暂停点仍需存活的状态。
 
-下面先看 work() 的三行函数体：第一次调用输出 before，暂停后回到 main，手动 resume() 才输出 after。ManualTask 负责帧的唯一所有权；首次阅读只需知道它创建句柄、恢复和析构时销毁，不必先记住 Promise 的每个接口。
+下面的完整程序较长，因为 C++20 需要我们自己提供管理类型。先只看要实现的控制流：
+
+```text
+ManualTask work() {
+    输出 before;
+    co_await std::suspend_always{}; // 在这里暂停，回到调用方
+    输出 after;                    // 恢复时从这里继续
+}
+```
+
+| 调用方做的事 | work 中发生的事 |
+| --- | --- |
+| `task = work()` | 输出 before，执行到 co_await 后暂停 |
+| 第一次 `task.resume()` | 从暂停处继续，输出 after，完成函数 |
+| 第二次 `task.resume()` | 包装器发现已经完成，不再恢复 |
+| task 离开作用域 | 包装器释放保存的协程状态 |
+
+下面的 `ManualTask` 就负责这份状态的唯一所有权。第一次阅读可以从程序末尾的 `work` 和 `main` 开始，再返回管理类型；Promise 接口留待后文。
 
 ```cpp example id="cpp20-manual-coroutine-resume" std="c++20" file="main.cpp" kind="single" compilers="all" output="before after"
 #include <coroutine>

@@ -2,42 +2,86 @@
 
 阅读前建议先了解：[对象生命周期](../prerequisites.md#对象生命周期与引用)、[Lambda](../cpp11/lambdas.md)；先分别学习三种状态类型。本篇介绍的新增能力属于 C++17；后续版本差异会另行标注。
 
-## 学习目标与领域状态建模
+## 先确定要表达哪种结果
 
-C++14 项目常用特殊整数或空指针表示“没有结果”，用手写联合体表示多种结果之一，再用 `void*`、基类指针或自定义类型擦除（通过统一接口保存和调用不同具体类型）保存插件数据。这些方案可能把状态约定藏在注释里，或要求调用方手工维护判别值、析构和转换安全。
+普通 `int` 表示“一定有一个整数”。如果接口还需要表达缺失或不同类型，就需要把这些情况写进返回类型，而不是约定 `-1` 是失败、再让调用者记住约定。
 
-C++17 提供三种可组合的词汇类型：`optional<T>` 表达零个或一个 `T`，`variant<Ts...>` 在正常状态保存已知备选类型中的一项，`any` 可以保存不同的可复制类型，也可以为空。variant 在特定异常路径还可能变成 valueless_by_exception（无值状态）。它们解决的模型不同，不应因接口相似而互换。
+| 需求 | 选择 | 例子 |
+| --- | --- | --- |
+| 可能没有值 | `optional<T>` | 查询用户年龄，可能未填写 |
+| 值来自已知几种类型之一 | `variant<A, B>` | 配置项可以是整数或字符串 |
+| 无法在接口中列全要保存的类型 | `any` | 插件附带的数据 |
 
-读完后，你应能先按状态空间选择类型，再安全访问内容，并理解内联存储、判别状态、类型擦除、异常和对象生命周期成本。
+三种工具可以分别使用。下面先看最小例，再看组合练习；内存布局和异常细节放在后半篇。
 
-## 最小接口与选择顺序
+## optional：有年龄，或者没填写
 
-```text
-std::optional<int> maybe_count;            // 无值或一个 int
-std::variant<int, std::string> result;      // 备选集合在编译期封闭
-std::any extension_data;                    // 具体类型在运行期开放
+传统接口可能用 `-1` 表示缺失，或返回 bool 并通过参数输出年龄。`optional<int>` 把“有无”和“整数”放在同一个返回值中。
+
+```cpp example id="cpp17-optional-basic" std="c++17" file="main.cpp" kind="single" compilers="all" output="age=20, missing=true"
+#include <iostream>
+#include <optional>
+std::optional<int> find_age(bool provided) {
+    if (!provided) return std::nullopt;
+    return 20;
+}
+int main() {
+    const auto known = find_age(true);
+    const auto unknown = find_age(false);
+    if (known) {
+        std::cout << "age=" << *known;
+    }
+    std::cout << ", missing=" << std::boolalpha << !unknown << '\n';
+}
 ```
 
-优先询问三个问题：是否只是可能缺失；合法类型是否能在接口声明中列全；是否确实需要开放扩展。越靠后的工具，静态检查通常越少。
+`nullopt` 表示没有值，`if (known)` 检查是否有值，`*known` 才取出整数。空 optional 不是整数 0，也不是默认构造出的一个 int；它不携带缺失原因，需要错误原因可读 C++23 的 [`expected`](../cpp23/expected.md)。
 
-## 先把三种状态分别说清楚
+## variant：在已知选项中保存一种
 
-以下片段只对比写法；完整、可运行的程序见后文。
+如果配置项只允许整数和文本，传统写法需要类型标签配合 union 或多个字段。`variant<int, std::string>` 同时管理当前类型与值。
 
-```text
-// 无值不是一个“神奇整数”
-std::optional<int> count;
-// 可用类型集合已知：用带判别状态的选择
-std::variant<int, std::string> result = 42;
-// 类型集合开放：取值时必须确认实际类型
-std::any metadata = std::string("cpp17");
+```cpp example id="cpp17-variant-basic" std="c++17" file="main.cpp" kind="single" compilers="all" output="integer=42, text=auto"
+#include <iostream>
+#include <string>
+#include <variant>
+int main() {
+    std::variant<int, std::string> setting = 42;
+    if (const int* number = std::get_if<int>(&setting)) {
+        std::cout << "integer=" << *number;
+    }
+    setting = std::string("auto");
+    if (const std::string* text = std::get_if<std::string>(&setting)) {
+        std::cout << ", text=" << *text << '\n';
+    }
+}
 ```
 
-optional 可替代额外的有效标志或哨兵值；variant 可替代手写 union 与类型标签；any 可替代部分不安全的 void* 数据保存。它们不互相替代：普通确定的 int 无需 optional，固定结果集合优先 variant，开放插件数据才考虑 any。variant 还可能在特定异常路径出现无值状态，后文会单独说明。
+第一次保存整数，赋值后改为字符串。`get_if` 在类型匹配时返回指针，否则返回空指针，所以判断成功后才能解引用。可选类型在声明中列出；不能任意放入一个未列出的对象。需要为每种类型执行不同逻辑时，后文再介绍 `visit`。
 
-## 第一个完整示例
+## any：保存开放类型，取值时确认
 
-示例同时展示三种状态，但真实接口通常只选其中最准确的一种。每次访问前都先确认状态或类型。
+相比 `void*` 加手工管理寿命，`any` 会管理所保存对象的构造、复制和销毁。不过调用者仍须知道要取出的类型。
+
+```cpp example id="cpp17-any-basic" std="c++17" file="main.cpp" kind="single" compilers="all" output="tag=cpp17, integer=false"
+#include <any>
+#include <iostream>
+#include <string>
+int main() {
+    std::any metadata = std::string("cpp17");
+    if (const auto* text = std::any_cast<std::string>(&metadata)) {
+        std::cout << "tag=" << *text;
+    }
+    std::cout << ", integer=" << std::boolalpha
+              << (std::any_cast<int>(&metadata) != nullptr) << '\n';
+}
+```
+
+这里使用指针形式的 `any_cast`：类型不匹配返回空指针，不抛异常。`any_cast<int>` 不会把字符串解析为整数，也不会自动执行普通数值转换。保存的类型须可复制；类型集合已知时，优先考虑 variant，便于编译器检查处理是否齐全。
+
+## 组合练习：识别三种不同状态
+
+示例同时展示三种状态，但真实接口通常只选其中最准确的一种。这里检查 optional 和 variant 的状态；any 的类型由前面的构造语句确定。
 
 ```cpp example id="cpp17-vocabulary-types" std="c++17" file="main.cpp" kind="single" compilers="all" output="answer=42, tag=cpp17"
 #include <any>
@@ -63,7 +107,7 @@ int main() {
 }
 ```
 
-程序输出 `answer=42, tag=cpp17`。`answer` 的有值状态、`value` 的字符串备选和 `metadata` 的实际类型分别经过检查。错误的 `get` 或值形式 `any_cast` 会抛出异常；可通过查询函数、访问器或指针形式转换设计无异常分支。
+程序输出 `answer=42, tag=cpp17`。`answer` 的有值状态和 `value` 的字符串备选经过检查；`metadata` 刚被构造为字符串，因此这里直接使用值形式的 `any_cast`。错误的 `get` 或值形式 `any_cast` 会抛出异常；可通过查询函数、访问器或指针形式转换设计无异常分支。
 
 ## `optional`：零个或一个值
 
@@ -169,14 +213,6 @@ int main() {
 
 `optional` 和 `variant` 的值通常位于包装对象内部，因此包装对象移动、销毁或切换状态会影响指向内部值的引用。`any` 可能内联也可能堆分配，标准不承诺移动后内部对象地址保持不变。不要长期保存由 `*optional`、`get` 或 `any_cast<T&>` 获得的引用，除非外围对象及其状态变更规则完全受控。
 
-## 示例解析与建模顺序
-
-示例分别展示缺失性、封闭联合和开放元数据。建模时先问“状态集合能否列举”，再问“缺失是否需要原因”，最后才考虑 `any`。同时评估对象大小、复制成本、异常策略和序列化方式。
-
-三种类型都把状态放进类型系统，但保证程度不同：`optional<T>` 固定一个值类型和缺失状态；`variant<Ts...>` 固定有限集合并允许编译期穷尽；`any` 只保证运行期携带某个可复制类型。越开放，调用方能获得的静态检查越少。
-
-跨共享库或插件边界传递 `any` 还需要考虑 RTTI、标准库 ABI 和分配器边界。稳定协议通常应使用显式标签加稳定数据格式，而不是直接暴露 `any` 的进程内表示。
-
 ## 三种词汇类型对照
 
 | 需求/接口 | `optional` | `variant` | `any` |
@@ -191,19 +227,6 @@ int main() {
 | 穷尽处理 | 单一值分支 | `visit` 可编译期覆盖备选 | 调用方运行期约定类型 |
 | 无值异常态 | 空 optional | `valueless_by_exception` | 构造失败后可能为空 |
 | 选择原则 | 正常缺失 | 有限代数数据类型 | 真正开放扩展边界 |
-
-## 词汇类型专项审查问题
-
-- “缺失”是否需要错误原因，optional 是否信息不足？
-- optional 解引用前是否有状态证明？
-- `optional<reference_wrapper<T>>` 的目标是否持续存活？
-- variant 第一备选是否支持预期默认构造？
-- 转换构造是否因多个备选隐式转换而歧义？
-- 访问者是否覆盖全部备选及多 variant 笛卡尔积？
-- 是否处理 `valueless_by_exception` 而非假定永不发生？
-- any 所存类型是否满足可复制要求？
-- `any_cast` 是否要求精确类型而代码却期待数值转换？
-- any 是否错误跨越不稳定 RTTI/标准库 ABI 边界？
 
 ## 运行本篇示例
 

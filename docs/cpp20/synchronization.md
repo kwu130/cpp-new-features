@@ -2,39 +2,82 @@
 
 阅读前建议先了解：[C++11 条件变量](../cpp11/concurrency.md#条件变量的完整等待协议)、[jthread](jthread.md)。本篇介绍的新增能力属于 C++20；后续版本差异会另行标注。
 
-## 学习目标与条件变量样板
+## 先用一句话说清楚要等什么
 
-C++17 中，一次性汇合、重复阶段同步或资源许可通常用互斥量、条件变量、计数器和谓词自行组合。正确实现需要同时处理丢失通知、虚假唤醒、计数更新和内存可见性，代码很容易把三种不同状态机混在一起。
+“等待”可能有三种不同目的：等所有准备工作做完、每轮都等所有参与者到齐，或者等一份可用资源。过去常用条件变量加计数器组合实现；C++20 给这三种需求分别提供现成类型。
 
-C++20 提供 `latch`、`barrier` 和 `counting_semaphore`：分别表达一次性倒计数、可重复阶段汇合和可消费许可。选择正确原语能让状态约束进入接口，但参与数和对象生命周期仍由程序负责。
+| 你要表达的事 | 工具 | 先记住的区别 |
+| --- | --- | --- |
+| 两项初始化全部结束后继续 | latch | 倒计数到零后一直开放，不能重置 |
+| 每轮计算都等所有工作者到齐 | barrier | 一轮完成后进入下一轮 |
+| 有一份资源/工作才允许继续 | semaphore | 获取消耗许可，释放增加许可 |
 
-读完后，你应能为启动门、阶段算法和资源池选择原语，解释每项操作的同步关系，并识别计数不足、参与者退出、完成函数和公平性风险。
+它们不是“更高级的锁”。如果只是防止两个线程同时修改容器，mutex 通常更直接。
 
-## 最小接口
+## 一次性完成：latch
 
-```text
-std::latch done(task_count);              // 计数到零后永久开放
-std::barrier phase(participant_count);    // 每个阶段自动重置
-std::counting_semaphore<capacity> permits(initial_count);
-
-done.count_down();  done.wait();
-phase.arrive_and_wait();
-permits.acquire();  permits.release();
+```cpp example id="cpp20-latch-basic" std="c++20" file="main.cpp" kind="single" compilers="all" output="result=42"
+#include <iostream>
+#include <latch>
+#include <thread>
+int main() {
+    int result = 0;
+    std::latch ready(1);
+    std::jthread worker([&] {
+        result = 42;
+        ready.count_down();
+    });
+    ready.wait();
+    std::cout << "result=" << result << '\n';
+}
 ```
 
-## 把不同等待目的交给对应原语
+ready 从 1 变成 0，wait 才返回；工作线程在 count_down 前的写入对之后的读取可见。如果工作线程先完成，主线程后来 wait 也会直接通过，不会丢失这次完成状态。
 
-以下片段只对比写法；完整、可运行的程序见后文。
+只有一个线程时 join 也能等待结束，本例刻意只解释计数。latch 更适合等待多个任务的某个完成点，而不要求这些任务所属的线程此后立即退出。计数到零后不要再减，避免违反前置条件。
 
-```text
-std::latch done(task_count);           // 一次性倒计数到零
-std::barrier phase(participant_count); // 可重复阶段汇合
-std::counting_semaphore<8> permits(2);  // 可消费的许可数
+## 重复会合：barrier
+
+```cpp example id="cpp20-barrier-basic" std="c++20" file="main.cpp" kind="single" compilers="all" output="rounds=2"
+#include <barrier>
+#include <iostream>
+#include <thread>
+int main() {
+    std::barrier meeting(2);
+    std::jthread worker([&] {
+        for (int round = 0; round < 2; ++round) meeting.arrive_and_wait();
+    });
+    for (int round = 0; round < 2; ++round) meeting.arrive_and_wait();
+    worker.join();
+    std::cout << "rounds=2\n";
+}
 ```
 
-传统实现常用条件变量、计数器和锁自行组合。新原语省去部分状态维护，但三者不能互换：完成一次用 latch，反复阶段用 barrier，限制并发访问量用 semaphore。复杂业务谓词仍可能更适合条件变量，参与数、异常退出和资源寿命也不会自动正确。
+参与人数是 2，主线程与工作线程都算一个。每轮双方各到达一次后才能继续；第二轮会重新等待，不像 latch 一旦开放就一直开放。这里只观察会合，后面的双缓冲/阶段计算例再处理共享数据。
 
-## 第一个完整示例
+## 许可可以先存起来：semaphore
+
+```cpp example id="cpp20-semaphore-basic" std="c++20" file="main.cpp" kind="single" compilers="all" output="permits used=2"
+#include <iostream>
+#include <semaphore>
+int main() {
+    std::counting_semaphore<2> permits(0);
+    permits.release(2);
+    permits.acquire();
+    permits.acquire();
+    std::cout << "permits used=2\n";
+}
+```
+
+即使 release 发生在 acquire 之前，许可仍会保留，因此两个 acquire 都能继续。第三次 acquire 会等待新的许可，本例不执行它。模板参数 2 是要求实现至少支持的最大计数，构造参数 0 才是初始许可数。
+
+这个单线程例只观察许可数量。生产者—消费者程序中，不同线程可以 release/acquire；许可本身不存放业务对象，共享队列仍要单独保护。
+
+## 什么时候停止阅读入门部分
+
+能区分“完成次数、每轮参与人数、可消费许可”就已掌握选择依据。下面的组合练习只用于比较职责；实际需求若用一种工具能表达，就不必全部引入。
+
+## 组合练习：分别标出三种等待的目的
 
 二元信号量控制工作线程开始，barrier 让两个线程在结果写入后汇合，latch 再表达工作线程已经完成收尾。
 
@@ -197,19 +240,6 @@ latch/barrier 共享计数会形成缓存热点。把非常细粒度循环每次
 | `binary_semaphore` | 单许可用途，但仍不是带所有者的 mutex |
 | `release` | 累积许可并建立发布关系，不能超过最大值 |
 | `acquire` | 消耗许可；标准未提供自动归还 RAII 守卫 |
-
-## 同步原语专项审查问题
-
-- latch 初始计数是否对应任务数而非模糊的线程数？
-- 所有异常/提前返回路径是否仍 `count_down`/到达？
-- barrier 每阶段参与者是否恰好到达一次？
-- `arrival_token` 是否只用于其所属 barrier 和阶段？
-- 临时缺席是否错误使用 `arrive_and_drop` 永久退出？
-- completion 是否不抛、短小且不假定固定执行线程？
-- semaphore release 是否可能超过逻辑/实现最大许可？
-- acquire 后异常路径是否用 RAII 归还许可？
-- 许可对应的资源队列是否有独立正确并发协议？
-- 公平性和阶段最慢参与者的尾延迟是否实际测量？
 
 ## 运行本篇示例
 

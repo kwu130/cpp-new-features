@@ -2,42 +2,38 @@
 
 阅读前建议先了解：[C++11 原子与内存序](../cpp11/concurrency.md#原子操作与内存序)；先用默认顺序，再分析更弱内存序。本篇介绍的新增能力属于 C++20；后续版本差异会另行标注。
 
-## 学习目标与简单状态等待问题
+## 等待一个值改变，先看最少的接口
 
-C++17 若要让线程等待一个原子状态变化，通常只能忙等、自行退避，或再建立互斥量与条件变量；后者的通知必须与另一份谓词状态正确配合。已有对象若后来需要原子访问，也无法直接改变公开布局为 `atomic<T>`。
+假设工作线程要把状态从 0 改为 1，主线程在那之前不能继续。反复 load() 的循环会持续消耗 CPU；条件变量可以让线程等待，但要另外管理锁和条件。C++20 的 atomic::wait 允许围绕原子对象自身的值等待。
 
-C++20 为原子对象加入 `wait`、`notify_one`、`notify_all`，并提供 `atomic_ref<T>` 以原子方式观察满足条件的现有对象。等待解决休眠效率，`atomic_ref` 解决访问形式；二者都不会替调用方设计正确状态机和内存序。
+本篇的 atomic_ref 是另一项能力：给已有对象提供原子访问方式。先学 wait/notify，再阅读 atomic_ref，不需要把它们绑在一起。
 
-读完后，你应能围绕旧值循环等待，理解通知不保存事件，满足 `atomic_ref` 的对齐、生命周期与一致访问要求，并选择 acquire/release 或更弱内存序。
+## 先只使用 wait 与 notify
 
-## 最小接口
-
-```text
-state.wait(old_value);      // 返回前确认值表示已不等于 old_value
-state.store(new_value, std::memory_order_release);
-state.notify_one();
-
-std::atomic_ref<int> view(existing_aligned_int);
-view.fetch_add(1, std::memory_order_relaxed);
+```cpp example id="cpp20-atomic-wait-basic" std="c++20" file="main.cpp" kind="single" compilers="all" output="state=1"
+#include <atomic>
+#include <iostream>
+#include <thread>
+int main() {
+    std::atomic<int> state{0};
+    std::jthread worker([&] {
+        state.store(1);
+        state.notify_one();
+    });
+    state.wait(0);
+    std::cout << "state=" << state.load() << '\n';
+}
 ```
 
-## 等待值变化，不只不断轮询
+wait(0) 的意思是“值还是 0 就继续等”，不是“等通知次数变成 0”。工作线程先存入 1，再通知等待者重新检查。即使工作线程先完成，后来调用 wait(0) 也会看到值已不同而返回。
 
-以下片段只对比写法；完整、可运行的程序见后文。
+只 notify 不改变值，不能让这个 wait 成功返回；只 store 不通知，也不能保证已经阻塞的等待者及时醒来。通知不积累事件，本例只有一次 0 → 1，不涉及状态反复改变。所有操作使用默认内存序，先不引入 acquire/release 名称。
 
-```text
-// 传统忙等：持续占用执行资源
-while (state.load() == 0) {}
-// C++20：等待旧值发生变化，配合更新和通知
-state.wait(0);
-// 生产者：state.store(1); state.notify_one();
-```
+适合等待一个简单原子状态；若要保存每次发生的事件，应使用计数、队列或信号量，不要让状态快速来回改变后期待 wait 记录全过程。
 
-对这个从 0 到 1 的单向状态，两者都能等待变化；wait 允许实现采用阻塞机制，通知仍须由更新方安排。适合等待简单原子状态；通知不保存事件，状态若先变化又恢复可能漏过中间值。atomic_ref 是另一个独立工具，只用于满足对齐、寿命和一致原子访问要求的已有对象。
+## 组合练习：给已有整数提供原子访问
 
-## 第一个完整示例
-
-工作线程先通过 `atomic_ref` 写计数器，再发布状态并通知；主线程等待发布完成后，通过另一 `atomic_ref` 原子递增相同对象。
+atomic_ref 可理解为“借用已有对象的原子访问接口”，它不拥有被借用的对象。下面在刚学过的等待流程中加入计数器；普通新代码可以直接声明 atomic<int>，只有确需保持已有存储形式时才考虑 atomic_ref。required_alignment 表示该接口要求的对齐，可能比普通 int 更严格。
 
 ```cpp example id="cpp20-atomic" std="c++20" file="main.cpp" kind="single" compilers="all" output="43"
 #include <atomic>
@@ -46,7 +42,7 @@ state.wait(0);
 
 int main() {
     std::atomic<int> state{0};
-    int counter = 0;
+    alignas(std::atomic_ref<int>::required_alignment) int counter = 0;
     std::jthread worker([&] {
         std::atomic_ref<int> reference(counter);
         reference.store(42);
@@ -62,7 +58,7 @@ int main() {
 }
 ```
 
-程序输出 `43`。状态的默认顺序使主线程观察到工作线程此前写入，随后原子加一。`atomic_ref` 的底层对象必须满足对齐要求，且在相关并发访问期间不能混用普通非原子访问；通知本身不保存事件。
+程序输出 `43`。状态的默认顺序使主线程观察到工作线程此前写入，随后原子加一。`atomic_ref` 的底层对象必须满足对齐要求，且在任何引用它的 atomic_ref 存活期间，对该对象的访问都必须经过 atomic_ref；通知本身不保存事件。
 
 ## 原子等待的语义
 
@@ -96,7 +92,7 @@ int main() {
 
 ## `atomic_ref` 的用途与约束
 
-`atomic_ref<T>` 为一个已经存在的 T 对象提供原子操作，适合共享内存布局、外部结构或逐步迁移旧数据。所有指向同一对象的并发访问必须兼容地原子化，混用普通读写仍会数据竞争。
+`atomic_ref<T>` 为一个已经存在的 T 对象提供原子操作，适合共享内存布局、外部结构或逐步迁移旧数据。只要还有引用该对象的 atomic_ref 存活，对象的访问就必须全部通过 atomic_ref；这项要求不限于恰好发生并发访问的时刻。
 
 底层对象地址必须满足 `required_alignment`，生命周期必须覆盖所有 `atomic_ref`，T 必须满足规定的可平凡复制等要求。本篇的读写示例使用非 const 类型；不能通过 atomic_ref 修改 const 对象。cv 限定类型的可用操作还涉及 [P3323R1](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2024/p3323r1.html) 对原有规范缺陷的修正，不宜笼统写成“atomic_ref 永远不能引用 const 对象”。是否无锁可查询，未对齐不能靠实现“凑合”。
 
@@ -179,21 +175,8 @@ int main() {
 | ABA | 值变走又变回 old 可能无法观察中间事件 |
 | `atomic_ref<T>` | 非拥有地为既有 T 提供原子访问 |
 | `required_alignment` | 目标地址必须满足，可能大于 alignof(T) |
-| 混合普通访问 | 并发期间与 `atomic_ref` 混用会数据竞争 |
+| 混合普通访问 | 任一相关 `atomic_ref` 存活期间，访问必须经 `atomic_ref` |
 | `is_lock_free` | 非 lock-free 仍具原子语义，可能内部加锁 |
-
-## 原子等待专项审查问题
-
-- 生产者是否先修改状态再 notify？
-- 消费者是否在 wait 返回后重新检查完整业务状态？
-- 纯布尔状态是否会因 ABA 丢失中间事件？
-- payload 发布是否有匹配的 release/acquire 链？
-- wait 是否错误使用 release 或 `acq_rel` 内存序？
-- `notify_one` 的任意唤醒是否适合当前消费者模型？
-- `atomic_ref` 目标是否满足 `required_alignment`？
-- 同一底层对象并发访问是否全部采用原子协议？
-- `atomic_ref` 生命周期结束前是否可能销毁目标对象？
-- lock-free 与跨进程可用性是否在目标平台实际验证？
 
 ## 运行本篇示例
 
@@ -206,6 +189,7 @@ python3 tools/verify_examples.py --compiler clang++ --path docs/cpp20/atomic.md
 ## 权威资料
 
 - [P0019R8：`atomic_ref`](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2018/p0019r8.html)
+- [工作草案：atomic_ref 的对齐与访问要求](https://eel.is/c++draft/atomics.ref.generic)
 - [P1135R6：原子等待与通知](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1135r6.html)
 - [工作草案：Atomic waiting operations](https://eel.is/c++draft/atomics.wait)
 - [CPP20 版本变化或工作草案总览](https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2020/p2131r0.html)

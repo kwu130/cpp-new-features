@@ -2,42 +2,36 @@
 
 阅读前建议先了解：[容器](../cpp11/containers.md)、[所有权与生命周期](../prerequisites.md#所有权与-raii)；分配器只管理存储，容器负责元素。本篇介绍的新增能力属于 C++17；后续版本差异会另行标注。
 
-## 学习目标与分配器类型传播
+## 先问：容器从哪里取得内存
 
-传统标准分配器是容器模板参数的一部分。即使两个 `vector` 只采用不同内存策略，它们也会成为不同 C++ 类型；分配器传播规则还会渗入复制、移动、交换和嵌套容器。短生命周期批处理若逐次调用通用堆，也可能付出不必要的元数据与释放成本。
+普通 `std::vector<int>` 会在需要空间时通过自己的分配器申请内存。批处理等场景可能希望一批容器共用某种分配策略，并在批次结束时集中释放存储。
 
-C++17 的多态内存资源库位于 `std::pmr`。`polymorphic_allocator` 在类型层保持一致，通过 `memory_resource*` 在运行期选择分配策略；标准提供单调资源、同步与非同步池资源以及默认/空资源。
+传统自定义分配器会成为容器类型的一部分，例如 `vector<int, MyAllocator<int>>`。C++17 的 `std::pmr::vector<int>` 则在创建时接收一个“内存资源”，由它决定从哪里分配；换资源时仍是同一种容器类型。
 
-读完后，你应能选择资源、安排资源与容器的生命周期，理解虚调用和上游资源模型，并判断跨资源移动为何可能从常数时间退化为逐元素操作。
+## 最小示例：先管理一个整数容器
 
-## 最小接口
-
-```text
-std::pmr::monotonic_buffer_resource arena(buffer, size);
-std::pmr::vector<int> values(&arena);
-
-class custom_resource : public std::pmr::memory_resource {
-    // 覆盖 do_allocate、do_deallocate、do_is_equal
-};
+```cpp example id="cpp17-pmr-basic" std="c++17" file="main.cpp" kind="single" compilers="all" output="10 20"
+#include <iostream>
+#include <memory_resource>
+#include <vector>
+int main() {
+    std::pmr::monotonic_buffer_resource resource;
+    {
+        std::pmr::vector<int> values(&resource);
+        values.push_back(10);
+        values.push_back(20);
+        std::cout << values[0] << ' ' << values[1] << '\n';
+    } // 先销毁容器及其元素
+} // 再销毁资源，集中归还它申请的存储
 ```
 
-资源只管理原始存储，元素构造与析构仍由分配器和容器完成。
+`values` 的使用方式仍像 vector；新增的是构造时传入 `&resource`。这里的 `monotonic_buffer_resource` 会按需向上游申请块，不单独回收每一次分配，而是在释放资源时集中归还。
 
-## 改变内存策略而不改变容器类型
+先记住寿命顺序：容器使用资源，所以资源必须活得更久。资源释放的是存储，容器仍负责元素的构造和析构。不能在容器还使用内存时调用 `resource.release()`。
 
-以下片段只对比写法；完整、可运行的程序见后文。
+本例没有禁止堆分配，也不保证比普通 vector 更快。先有批量分配需求或测量依据，再选择资源；下一例才加入初始缓冲区和嵌套字符串。
 
-```text
-// 传统分配器作为模板参数的一部分
-std::vector<int, CustomAllocator<int>> values;
-// C++17：资源在运行期指定，仍是 pmr::vector<int>
-std::pmr::monotonic_buffer_resource resource;
-std::pmr::vector<int> values(&resource);
-```
-
-这是两种不同的容器设计，不在同一作用域重复声明。PMR 让资源策略从容器类型中分离，适合批处理或同生命周期对象图；并不等于自动禁止堆分配。资源必须比所有使用它的容器活得更久；普通小容器、无明确分配瓶颈时无需引入资源层。
-
-## 第一个完整示例
+## 组合练习：缓冲区与嵌套字符串
 
 示例把固定数组作为单调资源的初始缓冲区，并让向量及其嵌套字符串使用同一个资源。这里的声明顺序保证资源比容器后析构。
 
@@ -216,19 +210,6 @@ uses-allocator 构造只对声明支持相应分配器协议的元素传播。`p
 | `pool_options` | 调整块类别参数，具体策略仍实现定义 |
 | `is_equal` | 判断跨资源释放兼容性，不是配置文本相同 |
 | 默认资源 | 只影响随后默认构造的多态分配器 |
-
-## PMR 专项审查问题
-
-- `memory_resource` 是否比全部分配对象活得更久？
-- 单调资源初始缓冲区耗尽后是否允许向上游扩张？
-- release 前是否已析构所有使用该资源的对象？
-- `unsynchronized_pool` 是否被多个线程无保护共享？
-- uses-allocator 是否传播到每层嵌套 PMR 元素？
-- 普通 std::string 是否被误认为自动使用外层资源？
-- 跨不等资源移动是否退化为逐元素搬迁？
-- 自定义 `is_equal` 是否真实表示可交叉释放？
-- 诊断资源记录日志时是否递归从自身分配？
-- 是否测量峰值驻留与请求分布而非只数分配次数？
 
 ## PMR 故障定位线索
 
