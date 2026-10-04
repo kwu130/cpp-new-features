@@ -236,19 +236,6 @@ Range-for 与管道天然配合，因为语言会分别获取 begin/end。算法
 | projection | 比较前通过 invoke 提取元素字段 |
 | `subrange` | 非拥有地包装迭代器、哨兵和可选大小 |
 
-## Ranges 专项审查问题
-
-- 管道底层范围由谁拥有，何时销毁或重分配？
-- View 是否只满足 `input_range`，却被代码重复遍历？
-- filter/transform 中的函数对象是否含副作用或短寿命引用捕获？
-- 算法实际需要的 iterator/range Concept 是否被准确约束？
-- 返回迭代器面对临时非 borrowed range 时是否变成 dangling？
-- 投影是否稳定、只读并形成严格弱序所需关系？
-- 旧算法是否错误要求 common iterator/end，而当前 View 使用异型哨兵？
-- 惰性转换是否因多次解引用重复昂贵计算？
-- const View 是否真的能调用 begin，而非凭直觉假定？
-- 结果跨线程、排序或重复访问前是否应该先物化？
-
 ## Ranges 故障定位线索
 
 - 编译器报告 not range：先分别验证 ranges::begin 和 ranges::end。

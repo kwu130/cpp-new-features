@@ -170,19 +170,6 @@ C++20 chrono 还增加 `utc_clock`、`tai_clock`、`gps_clock`、`file_clock` �
 | `to_sys(local)` | 可能遇到不存在或重复当地时间 |
 | `choose::earliest/latest` | 为重复/规定映射选择瞬间，需业务决策 |
 
-## Chrono 专项审查问题
-
-- 输入 `year_month_day` 是否在转换前调用 ok()？
-- “一个月后”与“经过固定天数”是否按业务区分？
-- 月末、闰日失效后采用夹取、滚动还是报错策略？
-- 保存的是绝对瞬间、当地字段、区域名还是三者组合？
-- DST 不存在/重复当地时间是否显式选择策略？
-- 时区数据库缺失、过旧或 reload 是否有可观测处理？
-- duration 序列化是否记录单位与 epoch？
-- 测耗时是否使用 `steady_clock` 而非可跳变 `system_clock`？
-- UTC、TAI、GPS 与 Unix 风格 `sys_time` 是否被准确区分？
-- 目标标准库是否真实支持所用 tzdb/format 功能？
-
 ## 运行本篇示例
 
 源码保存在本文的完整 `cpp` 围栏中。以下命令从仓库根目录执行，提取并验证本篇全部示例：
