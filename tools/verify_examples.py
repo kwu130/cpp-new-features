@@ -262,6 +262,10 @@ def verify_one(example: Example, compiler: str) -> str:
             target.write_text(content, encoding="utf-8")
         executable = work / "example"
         common = [compiler, f"-std={example.standard}", "-Wall", "-Wextra", "-pedantic"]
+        if family == "clang" and example.requires is not None and example.requires.startswith("__cpp_lib_forward_like>="):
+            # Clang's builtin can bypass return-type deduction in libstdc++ 14.
+            # Use the actual library definition: llvm/llvm-project#64029.
+            common.append("-fno-builtin-std-forward_like")
         if example.kind == "single":
             if set(example.files) != {"main.cpp"}:
                 raise VerificationError(f"{example.source}:{example.line}: single example must contain main.cpp only")

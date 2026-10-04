@@ -62,6 +62,8 @@ int main() {
 
 返回成员引用时仍依赖原对象存活。给临时对象内部成员转发出右值引用，不会让该成员延长寿命。
 
+工具链提示：Clang 配合使用推导返回类型实现 `forward_like` 的标准库（例如 libstdc++ 14）时，可能报“deduced return type cannot be used before it is defined”。这是 Clang 内建优化与库实现的兼容问题，见 [LLVM #64029](https://github.com/llvm/llvm-project/issues/64029)。本仓库对 Clang 的此类示例添加 `-fno-builtin-std-forward_like`，让编译器实例化标准库中的真实定义；示例仍检查原来的引用类型和输出，不替换实现或跳过验证。
+
 ## unreachable：只有已经证明的分支才能使用
 
 传统代码用 assert(false)、抛异常或返回错误处理不可能情况；unreachable 告诉实现执行不会到达这里。执行到它是未定义行为，不能用于验证不可信输入，也不能替代错误处理。

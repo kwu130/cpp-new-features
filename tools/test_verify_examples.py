@@ -1,4 +1,4 @@
-"""Regression checks for feature-gated stacktrace verification."""
+"""Regression checks for feature-gated examples and toolchain compatibility."""
 
 import subprocess
 import tempfile
@@ -81,6 +81,30 @@ class StacktraceLinkTests(unittest.TestCase):
                 patch.object(verifier, "run_command", return_value=self.result(code=1)):
             with self.assertRaisesRegex(verifier.VerificationError, "failed to compile"):
                 verifier.verify_one(self.example, "clang++")
+
+
+class ForwardLikeCompatibilityTests(unittest.TestCase):
+    def test_clang_uses_library_definition_only_for_forward_like_examples(self):
+        for family, requirement, expected in (
+            ("clang", "__cpp_lib_forward_like>=202207", True),
+            ("gcc", "__cpp_lib_forward_like>=202207", False),
+            ("clang", None, False),
+        ):
+            with self.subTest(family=family, requirement=requirement):
+                example = verifier.Example(
+                    identifier="compatibility-test", standard="c++23", kind="single",
+                    compilers="all", source=Path("example.md"), line=1,
+                    files={"main.cpp": "int main() {}\n"}, requires=requirement,
+                )
+                result = subprocess.CompletedProcess([], 0, "", "")
+                with patch.object(verifier, "compiler_family", return_value=family), \
+                        patch.object(verifier, "supports_feature", return_value=True), \
+                        patch.object(verifier, "run_command", return_value=result) as run:
+                    self.assertEqual(verifier.verify_one(example, "c++"), "passed")
+                    command = run.call_args_list[0].args[0]
+                    self.assertEqual("-fno-builtin-std-forward_like" in command, expected)
+                    self.assertIn("-std=c++23", command)
+                    self.assertIn("-pedantic", command)
 
 
 if __name__ == "__main__":
